@@ -7,6 +7,8 @@ import { LoginPage } from './features/login/LoginPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { DispensePage } from './features/dispense/DispensePage'
 import { OTCPage } from './features/otc/OTCPage'
+import { InsightsPage } from './features/insights/InsightsPage'
+import { AskPage } from './features/ask/AskPage'
 import { BrandingPage } from './features/admin/BrandingPage'
 
 export default function App() {
@@ -21,6 +23,8 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/dispense" element={<DispensePage />} />
                 <Route path="/otc" element={<OTCPage />} />
+                <Route path="/insights" element={<InsightsPage />} />
+                <Route path="/ask" element={<AskPage />} />
                 <Route path="/admin/branding" element={<BrandingPage />} />
               </Route>
             </Route>

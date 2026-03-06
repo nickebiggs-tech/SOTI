@@ -3,13 +3,45 @@ import {
   BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { ShoppingBag, ChevronRight, X, Search, Factory, Package, TrendingUp } from 'lucide-react'
+import { ShoppingBag, ChevronRight, X, Search, Factory, Package, TrendingUp, TrendingDown, Sparkles } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCurrency } from '../../lib/formatters'
 import type { ManufacturerSummary } from '../../data/types'
 
 const COLORS = ['#0D9488', '#2563EB', '#7C3AED', '#D97706', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+
+/** Auto-generate narrative for the OTC market */
+function generateOTCNarrative(
+  totalTY: number, growth: number,
+  categories: { category: string; tyValue: number; valueGrowth: number; manufacturerCount: number }[],
+  totalUnits: number, mfrCount: number,
+): string[] {
+  const lines: string[] = []
+
+  const dir = growth >= 0 ? 'grew' : 'softened'
+  lines.push(`The OTC/consumer health market ${dir} ${Math.abs(growth).toFixed(1)}% year-on-year to ${formatCurrency(totalTY)}, encompassing ${formatCompact(totalUnits)} units across ${categories.length} market segments and ${mfrCount} manufacturers.`)
+
+  const growers = [...categories].filter(c => c.valueGrowth > 3).sort((a, b) => b.valueGrowth - a.valueGrowth)
+  const decliners = [...categories].filter(c => c.valueGrowth < -3).sort((a, b) => a.valueGrowth - b.valueGrowth)
+
+  if (growers.length > 0 && growers[0]) {
+    const top3 = growers.slice(0, 3).map(c => c.category).join(', ')
+    lines.push(`Growth pockets include ${top3}, with ${growers[0].category} leading at +${growers[0].valueGrowth.toFixed(1)}% — condition-specific categories continue to outperform general wellness.`)
+  }
+
+  if (decliners.length > 0 && decliners[0]) {
+    lines.push(`The sharpest decline was in ${decliners[0].category} (${decliners[0].valueGrowth.toFixed(1)}%), reflecting post-pandemic normalisation and intensifying online competition.`)
+  }
+
+  if (growth < 0) {
+    lines.push(`The overall market contraction signals a structural shift as pandemic-inflated categories normalise, while pharmacist-advised products and pharmacy-exclusive lines maintain stronger performance.`)
+  } else {
+    lines.push(`The market's return to growth is underpinned by premiumisation, pharmacist-recommended brands, and consumer willingness to invest in proactive health management.`)
+  }
+
+  return lines
+}
 
 export function OTCPage() {
   const { otcCategories, otcTotalTY, otcTotalLY, state } = useData()
@@ -19,6 +51,11 @@ export function OTCPage() {
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
   const totalUnits = useMemo(() => otcCategories.reduce((s, c) => s + c.tyUnits, 0), [otcCategories])
   const mfrCount = useMemo(() => new Set(state.otc.map(r => r.manufacturer)).size, [state.otc])
+
+  // Auto-narrative
+  const narrative = useMemo(() => generateOTCNarrative(
+    otcTotalTY, otcGrowth, otcCategories, totalUnits, mfrCount
+  ), [otcTotalTY, otcGrowth, otcCategories, totalUnits, mfrCount])
 
   const filteredCats = useMemo(() => {
     if (!search) return otcCategories
@@ -70,6 +107,19 @@ export function OTCPage() {
     return { growing, declining }
   }, [otcCategories])
 
+  // Category-specific auto-narrative for drill-in
+  const catNarrative = useMemo(() => {
+    if (!selectedCat || mfrBreakdown.length === 0) return ''
+    const catInfo = otcCategories.find(c => c.category === selectedCat)
+    if (!catInfo) return ''
+    const topMfr = mfrBreakdown[0]
+    if (!topMfr) return ''
+    const growthDir = catInfo.valueGrowth >= 0 ? 'grew' : 'declined'
+    const topSku = topSkus[0]
+    const skuNote = topSku ? ` The leading SKU is ${topSku.name} at ${formatCurrency(topSku.tyValue)}.` : ''
+    return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCurrency(catInfo.tyValue)}. ${topMfr.manufacturer} leads with ${topMfr.share.toFixed(1)}% share across ${catInfo.skuCount} total SKUs.${skuNote}`
+  }, [selectedCat, mfrBreakdown, otcCategories, topSkus])
+
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
       <div>
@@ -79,6 +129,23 @@ export function OTCPage() {
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">OTC / Front of Shop</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Consumer health market — category & manufacturer drill-in</p>
+      </div>
+
+      {/* Auto-Narrative */}
+      <div className="bg-gradient-to-r from-teal-900 to-emerald-900 rounded-xl p-4 sm:p-5 text-white animate-fade-in-up overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.03] rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-2.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-400/80">Market Narrative</span>
+          </div>
+          <div className="space-y-1.5">
+            {narrative.map((line, i) => (
+              <p key={i} className="text-[11px] sm:text-xs text-white/80 leading-relaxed">{line}</p>
+            ))}
+          </div>
+          <p className="text-[8px] text-white/25 mt-2">Powered by NostraData</p>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -107,7 +174,7 @@ export function OTCPage() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
           <h3 className="text-xs font-semibold text-red-600 mb-2.5 flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 rotate-180" /> Steepest Decline
+            <TrendingDown className="w-3.5 h-3.5" /> Steepest Decline
           </h3>
           <div className="space-y-2">
             {growthData.declining.map((c, i) => (
@@ -191,6 +258,16 @@ export function OTCPage() {
             </button>
           </div>
 
+          {/* Category auto-narrative */}
+          {catNarrative && (
+            <div className="px-4 sm:px-5 py-3 bg-gradient-to-r from-teal-50/50 to-emerald-50/50 border-b border-slate-100">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-3 h-3 text-teal-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-slate-600 leading-relaxed">{catNarrative}</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-5">
             {/* Top manufacturers bar */}
             <div>
@@ -201,7 +278,7 @@ export function OTCPage() {
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
                   <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={100} />
                   <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                  <Bar dataKey="tyValue" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={600}>
+                  <Bar dataKey="tyValue" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out">
                     {mfrBreakdown.slice(0, 10).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Bar>
                 </BarChart>
@@ -217,7 +294,7 @@ export function OTCPage() {
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                     <span className="text-[10px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
                     <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
                     <span className={`text-[9px] font-bold w-11 text-right ${m.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -259,6 +336,11 @@ export function OTCPage() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <div className="text-center py-2">
+        <p className="text-[9px] text-slate-300">Powered by <span className="font-semibold text-slate-400">NostraData</span></p>
+      </div>
     </div>
   )
 }

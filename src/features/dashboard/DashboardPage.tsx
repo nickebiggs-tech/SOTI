@@ -6,13 +6,56 @@ import {
 } from 'recharts'
 import {
   Pill, ShoppingBag, ArrowRight,
-  DollarSign, Package, Factory, FlaskConical,
+  DollarSign, Package, Factory, FlaskConical, TrendingUp, TrendingDown, Sparkles,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCurrency } from '../../lib/formatters'
 
 const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+
+/** Auto-generate analyst narrative from live data */
+function generateMarketNarrative(
+  ethTotalTY: number, ethGrowth: number,
+  otcTotalTY: number, otcGrowth: number,
+  totalMarket: number, totalGrowth: number,
+  ethTop: { category: string; valueGrowth: number }[],
+  otcTop: { category: string; valueGrowth: number }[],
+): string[] {
+  const lines: string[] = []
+
+  // Headline
+  const dir = totalGrowth >= 0 ? 'expanded' : 'contracted'
+  lines.push(`The Australian pharmacy market ${dir} ${Math.abs(totalGrowth).toFixed(1)}% year-on-year to ${formatCurrency(totalMarket)}, with prescription and consumer health segments diverging sharply.`)
+
+  // Rx narrative
+  if (ethGrowth >= 0) {
+    lines.push(`Prescription sales grew ${ethGrowth.toFixed(1)}% to ${formatCurrency(ethTotalTY)}, driven by high-value specialty medicines and biologics reshaping the dispensary landscape.`)
+  } else {
+    lines.push(`Prescription sales declined ${Math.abs(ethGrowth).toFixed(1)}% to ${formatCurrency(ethTotalTY)}, reflecting ongoing 60-day dispensing impacts and structural market adjustments.`)
+  }
+
+  // OTC narrative
+  if (otcGrowth >= 0) {
+    lines.push(`The OTC/front-of-shop segment returned to growth at ${otcGrowth.toFixed(1)}%, reaching ${formatCurrency(otcTotalTY)}, with condition-specific categories outperforming general wellness.`)
+  } else {
+    lines.push(`OTC sales softened ${Math.abs(otcGrowth).toFixed(1)}% to ${formatCurrency(otcTotalTY)} as pandemic-inflated categories normalised and online competition intensified.`)
+  }
+
+  // Top growth category callout
+  const topEth = ethTop.filter(c => c.valueGrowth > 5).sort((a, b) => b.valueGrowth - a.valueGrowth)
+  if (topEth.length > 0 && topEth[0]) {
+    lines.push(`Among prescription categories, ${topEth[0].category} led growth at +${topEth[0].valueGrowth.toFixed(1)}%, signalling accelerating demand in specialty and metabolic therapies.`)
+  }
+
+  // OTC growth/decline callout
+  const decOtc = otcTop.filter(c => c.valueGrowth < -5).sort((a, b) => a.valueGrowth - b.valueGrowth)
+  if (decOtc.length > 0 && decOtc[0]) {
+    lines.push(`The steepest OTC decline was in ${decOtc[0].category} (${decOtc[0].valueGrowth.toFixed(1)}%), reflecting post-pandemic normalisation and channel shift.`)
+  }
+
+  return lines
+}
 
 export function DashboardPage() {
   const { ethCategories, otcCategories, ethTotalTY, ethTotalLY, otcTotalTY, otcTotalLY, state } = useData()
@@ -39,6 +82,18 @@ export function DashboardPage() {
     { name: 'OTC / Front of Shop', value: Math.round(otcTotalTY) },
   ]
 
+  // Auto-narrative
+  const narrative = useMemo(() => generateMarketNarrative(
+    ethTotalTY, ethGrowth, otcTotalTY, otcGrowth, totalMarket, totalGrowth,
+    ethCategories, otcCategories,
+  ), [ethTotalTY, ethGrowth, otcTotalTY, otcGrowth, totalMarket, totalGrowth, ethCategories, otcCategories])
+
+  // Growth movers
+  const rxGrowers = useMemo(() => ethCategories.filter(c => c.lyValue > 10000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 3), [ethCategories])
+  const rxDecliners = useMemo(() => ethCategories.filter(c => c.lyValue > 10000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 3), [ethCategories])
+  const otcGrowers = useMemo(() => otcCategories.filter(c => c.lyValue > 50000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 3), [otcCategories])
+  const otcDecliners = useMemo(() => otcCategories.filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 3), [otcCategories])
+
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
       {/* Header */}
@@ -53,6 +108,24 @@ export function DashboardPage() {
         </p>
       </div>
 
+      {/* Auto-Generated Market Narrative */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-4 sm:p-6 text-white animate-fade-in-up">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-4 h-4 text-amber-400" />
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-400/80">Auto-Generated Market Narrative</span>
+        </div>
+        <div className="space-y-2">
+          {narrative.map((line, i) => (
+            <p key={i} className="text-xs sm:text-sm text-white/85 leading-relaxed">{line}</p>
+          ))}
+        </div>
+        <p className="text-[9px] text-white/30 mt-3 flex items-center gap-1">
+          <span>Generated from {formatCompact(state.eth.length + state.otc.length)} product records</span>
+          <span className="text-white/15">·</span>
+          <span>Powered by NostraData</span>
+        </p>
+      </div>
+
       {/* Macro KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 stagger-children">
         <KPICard title="Total Market" value={formatCompact(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<DollarSign className="w-4 h-4" />} />
@@ -61,6 +134,62 @@ export function DashboardPage() {
         <KPICard title="Total SKUs" value={formatCompact(ethSkuCount + otcSkuCount)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={formatCompact(ethMfrCount + otcMfrCount)} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="Rx Categories" value={`${ethCategories.length}`} icon={<FlaskConical className="w-4 h-4" />} />
+      </div>
+
+      {/* Growth Movers — auto-narrative summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+          <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+            <TrendingUp className="w-3 h-3" /> Rx Growth Leaders
+          </h3>
+          <div className="space-y-1.5">
+            {rxGrowers.map((c) => (
+              <div key={c.category} className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+                <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+          <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+            <TrendingDown className="w-3 h-3" /> Rx Under Pressure
+          </h3>
+          <div className="space-y-1.5">
+            {rxDecliners.map((c) => (
+              <div key={c.category} className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+                <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
+          <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+            <TrendingUp className="w-3 h-3" /> OTC Growth Leaders
+          </h3>
+          <div className="space-y-1.5">
+            {otcGrowers.map((c) => (
+              <div key={c.category} className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+                <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+            <TrendingDown className="w-3 h-3" /> OTC Under Pressure
+          </h3>
+          <div className="space-y-1.5">
+            {otcDecliners.map((c) => (
+              <div key={c.category} className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+                <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Quick nav cards */}
@@ -201,6 +330,11 @@ export function DashboardPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Footer */}
+      <div className="text-center py-2">
+        <p className="text-[9px] text-slate-300">Powered by <span className="font-semibold text-slate-400">NostraData</span></p>
       </div>
     </div>
   )

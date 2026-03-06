@@ -1,9 +1,14 @@
 import type { IAuthProvider, AuthUser } from './types'
 
+/**
+ * Local authentication provider for development and demo use.
+ * For production, switch to LDAP auth by setting VITE_AUTH_MODE=ldap
+ * and configuring the LDAP provider in AuthContext.tsx.
+ */
 const USERS: Record<string, { password: string; user: AuthUser }> = {
-  Nick: {
-    password: '1234',
-    user: { username: 'Nick', displayName: 'Nick', role: 'analyst' },
+  Jim: {
+    password: '3101',
+    user: { username: 'Jim', displayName: 'Jim', role: 'analyst' },
   },
   Admin: {
     password: '0000',

@@ -4,6 +4,8 @@ import {
   LayoutDashboard,
   Pill,
   ShoppingBag,
+  BookOpen,
+  Bot,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +18,8 @@ const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/dispense', icon: Pill, label: 'Dispense' },
   { to: '/otc', icon: ShoppingBag, label: 'OTC' },
+  { to: '/insights', icon: BookOpen, label: 'Insights' },
+  { to: '/ask', icon: Bot, label: 'Ask SOTI' },
   { to: '/admin/branding', icon: Settings, label: 'Settings' },
 ]
 

@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-import type { AuthUser } from './types'
+import type { AuthUser, IAuthProvider } from './types'
+import { AUTH_MODE } from './types'
 import { LocalAuthProvider } from './local-auth'
+import { LDAPAuthProvider } from './ldap-auth'
 
 interface AuthContextValue {
   user: AuthUser | null
@@ -12,7 +14,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const provider = new LocalAuthProvider()
+/** Select auth provider based on VITE_AUTH_MODE env var */
+function createProvider(): IAuthProvider {
+  switch (AUTH_MODE) {
+    case 'ldap':
+      return new LDAPAuthProvider()
+    default:
+      return new LocalAuthProvider()
+  }
+}
+
+const provider = createProvider()
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
