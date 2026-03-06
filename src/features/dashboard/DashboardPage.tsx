@@ -182,31 +182,6 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Market Intelligence — compact collapsible */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl overflow-hidden animate-fade-in-up">
-        <button
-          onClick={() => setNarrativeOpen(v => !v)}
-          className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-400/80">Market Intelligence</span>
-            <p className="text-[11px] sm:text-xs text-white/75 leading-relaxed mt-1 line-clamp-2">{narrative[0]}</p>
-          </div>
-          <ChevronDown className={`w-4 h-4 text-white/40 shrink-0 mt-0.5 transition-transform duration-200 ${narrativeOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {narrativeOpen && (
-          <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 border-t border-white/10 pt-3 ml-[26px] sm:ml-[30px]">
-            {narrative.slice(1).map((line, i) => (
-              <p key={i} className="text-[11px] text-white/60 leading-relaxed">{line}</p>
-            ))}
-            <p className="text-[8px] text-white/25 mt-2">
-              Source: {formatCompact(state.eth.length + state.otc.length)} records · NostraData Market Intelligence
-            </p>
-          </div>
-        )}
-      </div>
-
       {/* Quick nav cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <button onClick={() => navigate('/dispense')} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 text-left hover:shadow-md hover:border-slate-300 transition-all group">
@@ -345,6 +320,31 @@ export function DashboardPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Market Intelligence — compact collapsible */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl overflow-hidden">
+        <button
+          onClick={() => setNarrativeOpen(v => !v)}
+          className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-400/80">Market Intelligence</span>
+            <p className="text-[11px] sm:text-xs text-white/75 leading-relaxed mt-1 line-clamp-2">{narrative[0]}</p>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-white/40 shrink-0 mt-0.5 transition-transform duration-200 ${narrativeOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {narrativeOpen && (
+          <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 border-t border-white/10 pt-3 ml-[26px] sm:ml-[30px]">
+            {narrative.slice(1).map((line, i) => (
+              <p key={i} className="text-[11px] text-white/60 leading-relaxed">{line}</p>
+            ))}
+            <p className="text-[8px] text-white/25 mt-2">
+              Source: {formatCompact(state.eth.length + state.otc.length)} records · NostraData Market Intelligence
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
