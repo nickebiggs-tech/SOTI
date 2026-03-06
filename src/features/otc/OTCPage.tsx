@@ -261,71 +261,71 @@ export function OTCPage() {
 
       {/* ── SKU Intelligence ── */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-        <div className="px-4 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/40">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-teal-600" />
-              <h3 className="text-xs font-bold text-slate-800">SKU Intelligence</h3>
-              <span className="text-[8px] bg-teal-100 text-teal-700 font-semibold px-1.5 py-0.5 rounded">{formatCompact(skuInsights.total)} SKUs</span>
+        <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/40">
+          <div className="flex items-center justify-between flex-wrap gap-1.5">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <BarChart3 className="w-4 h-4 text-teal-600 shrink-0" />
+              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">SKU Intelligence</h3>
+              <span className="text-[7px] sm:text-[8px] bg-teal-100 text-teal-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">{formatCompact(skuInsights.total)} SKUs</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[8px] text-slate-400">Pareto:</span>
-              <span className="text-[9px] font-bold text-teal-600">{skuInsights.pareto80.count} SKUs = 80% value</span>
-              <span className="text-[8px] text-slate-400">({skuInsights.pareto80.pct.toFixed(1)}% of portfolio)</span>
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="text-[8px] text-slate-400 hidden sm:inline">Pareto:</span>
+              <span className="text-[8px] sm:text-[9px] font-bold text-teal-600">{skuInsights.pareto80.count} SKUs = 80%</span>
+              <span className="text-[7px] sm:text-[8px] text-slate-400 hidden sm:inline">({skuInsights.pareto80.pct.toFixed(1)}%)</span>
             </div>
           </div>
         </div>
         {/* Tab buttons */}
         <div className="flex border-b border-slate-100">
           {([
-            { key: 'value' as const, label: 'Highest Value', icon: <Award className="w-3 h-3" /> },
-            { key: 'growing' as const, label: 'Fastest Growing', icon: <TrendingUp className="w-3 h-3" /> },
-            { key: 'declining' as const, label: 'At Risk', icon: <AlertTriangle className="w-3 h-3" /> },
+            { key: 'value' as const, label: 'Top Value', fullLabel: 'Highest Value', icon: <Award className="w-3 h-3" /> },
+            { key: 'growing' as const, label: 'Growing', fullLabel: 'Fastest Growing', icon: <TrendingUp className="w-3 h-3" /> },
+            { key: 'declining' as const, label: 'At Risk', fullLabel: 'At Risk', icon: <AlertTriangle className="w-3 h-3" /> },
           ]).map(tab => (
             <button
               key={tab.key}
               onClick={() => setSkuTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-semibold transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-3 text-[9px] sm:text-[10px] font-semibold transition-colors ${
                 skuTab === tab.key
                   ? 'text-teal-700 border-b-2 border-teal-600 bg-teal-50/40'
                   : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
               }`}
             >
-              {tab.icon} {tab.label}
+              {tab.icon} <span className="sm:hidden">{tab.label}</span><span className="hidden sm:inline">{tab.fullLabel}</span>
             </button>
           ))}
         </div>
         {/* SKU table */}
-        <div className="p-4 sm:p-5 overflow-x-auto">
-          <table className="w-full text-[10px]">
+        <div className="p-3 sm:p-5 overflow-x-auto">
+          <table className="w-full text-[9px] sm:text-[10px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left py-1.5 text-slate-500 font-medium w-6">#</th>
-                <th className="text-left py-1.5 text-slate-500 font-medium">Product</th>
-                <th className="text-left py-1.5 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
-                <th className="text-left py-1.5 text-slate-500 font-medium w-24 hidden lg:table-cell">Category</th>
-                <th className="text-right py-1.5 text-slate-500 font-medium w-18">TY Value</th>
-                <th className="text-right py-1.5 text-slate-500 font-medium w-18 hidden sm:table-cell">LY Value</th>
-                <th className="text-right py-1.5 text-slate-500 font-medium w-16">Growth</th>
+                <th className="text-left py-2 text-slate-500 font-medium w-5 sm:w-6">#</th>
+                <th className="text-left py-2 text-slate-500 font-medium">Product</th>
+                <th className="text-left py-2 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
+                <th className="text-left py-2 text-slate-500 font-medium w-24 hidden lg:table-cell">Category</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">Value</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-18 hidden sm:table-cell">LY Value</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-14 sm:w-16">Chg</th>
               </tr>
             </thead>
             <tbody>
               {activeOtcSkuList.map((s, i) => (
-                <tr key={s.sku + i} onClick={() => drillToSku(s.category, s.manufacturer)} className="border-b border-slate-50 hover:bg-teal-50/60 transition-colors cursor-pointer group" title={`Drill into ${s.category} → ${s.manufacturer}`}>
-                  <td className="py-1.5 text-slate-400 font-bold">{i + 1}</td>
-                  <td className="py-1.5 text-slate-700 truncate max-w-[200px] font-medium group-hover:text-teal-700">{s.sku}</td>
-                  <td className="py-1.5 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
-                  <td className="py-1.5 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
-                  <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                  <td className="text-right py-1.5 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
-                  <td className={`text-right py-1.5 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
+                <tr key={s.sku + i} onClick={() => drillToSku(s.category, s.manufacturer)} className="border-b border-slate-50 hover:bg-teal-50/60 active:bg-teal-100/60 transition-colors cursor-pointer group" title={`Drill into ${s.category} → ${s.manufacturer}`}>
+                  <td className="py-2.5 sm:py-2 text-slate-400 font-bold">{i + 1}</td>
+                  <td className="py-2.5 sm:py-2 text-slate-700 truncate max-w-[120px] sm:max-w-[200px] font-medium group-hover:text-teal-700">{s.sku}</td>
+                  <td className="py-2.5 sm:py-2 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
+                  <td className="py-2.5 sm:py-2 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
+                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
+                  <td className="text-right py-2.5 sm:py-2 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
+                  <td className={`text-right py-2.5 sm:py-2 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
                     {s.growth >= 900 ? 'New' : `${s.growth >= 0 ? '+' : ''}${s.growth.toFixed(0)}%`}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-[8px] text-teal-400 italic">Click any row to drill into its category & manufacturer context</p>
+          <p className="mt-2 text-[8px] text-teal-400 italic">Tap any row to drill into its category & manufacturer</p>
           {skuTab === 'declining' && activeOtcSkuList.length > 0 && (
             <div className="mt-2 flex items-start gap-2 bg-red-50/60 rounded-lg p-2.5">
               <AlertTriangle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
@@ -445,22 +445,22 @@ export function OTCPage() {
             {/* Manufacturer share & growth — click to filter SKUs */}
             <div>
               <h4 className="text-xs font-semibold text-slate-600 mb-3">Market Share & Growth</h4>
-              <div className="space-y-1 max-h-[250px] overflow-y-auto scrollbar-thin">
+              <div className="space-y-0.5 max-h-[250px] overflow-y-auto scrollbar-thin">
                 {mfrBreakdown.slice(0, 15).map((m, i) => {
                   const isSel = selectedMfr === m.manufacturer
                   return (
                     <button
                       key={m.manufacturer}
                       onClick={() => setSelectedMfr(isSel ? null : m.manufacturer)}
-                      className={`w-full flex items-center gap-2 rounded-lg p-1.5 -mx-1 transition-colors cursor-pointer ${isSel ? 'bg-teal-50 ring-1 ring-teal-200' : 'hover:bg-slate-50'}`}
+                      className={`w-full flex items-center gap-1.5 sm:gap-2 rounded-lg py-2.5 sm:py-1.5 px-1.5 -mx-1 transition-colors cursor-pointer ${isSel ? 'bg-teal-50 ring-1 ring-teal-200' : 'hover:bg-slate-50 active:bg-slate-100'}`}
                     >
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                      <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{m.manufacturer}</span>
-                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <span className="text-[9px] sm:text-[10px] text-slate-600 flex-1 truncate text-left">{m.manufacturer}</span>
+                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                       </div>
-                      <span className="text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
-                      <span className={`text-[9px] font-bold w-11 text-right ${m.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
+                      <span className={`text-[8px] sm:text-[9px] font-bold w-10 sm:w-11 text-right ${m.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {m.valueGrowth >= 0 ? '+' : ''}{m.valueGrowth.toFixed(0)}%
                       </span>
                       <ChevronDown className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${isSel ? 'rotate-180' : ''}`} />
