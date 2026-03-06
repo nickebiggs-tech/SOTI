@@ -6,6 +6,7 @@ import {
   ShoppingBag,
   BookOpen,
   Bot,
+  CalendarDays,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/dispense', icon: Pill, label: 'Dispense' },
   { to: '/otc', icon: ShoppingBag, label: 'OTC' },
   { to: '/insights', icon: BookOpen, label: 'Insights' },
+  { to: '/seasonality', icon: CalendarDays, label: 'Seasonality' },
   { to: '/ask', icon: Bot, label: 'Ask SOTI' },
   { to: '/admin/branding', icon: Settings, label: 'Settings' },
 ]
