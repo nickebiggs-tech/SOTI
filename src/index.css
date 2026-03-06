@@ -1,0 +1,297 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: var(--theme-primary, #2563EB);
+  --color-primary-light: var(--theme-primary-light, #3B82F6);
+  --color-primary-foreground: var(--theme-primary-foreground, #FFFFFF);
+  --color-accent: var(--theme-accent, #0D9488);
+  --color-accent-foreground: var(--theme-accent-foreground, #FFFFFF);
+  --color-ring: var(--theme-ring, #2563EB);
+
+  --color-sidebar-from: var(--theme-sidebar-from, #0F172A);
+  --color-sidebar-to: var(--theme-sidebar-to, #1E293B);
+  --color-hero-from: var(--theme-hero-from, #0F172A);
+  --color-hero-mid: var(--theme-hero-mid, #2563EB);
+  --color-hero-to: var(--theme-hero-to, #0D9488);
+
+  --color-chart-1: var(--theme-chart-1, #2563EB);
+  --color-chart-2: var(--theme-chart-2, #0D9488);
+  --color-chart-3: var(--theme-chart-3, #D97706);
+  --color-chart-4: var(--theme-chart-4, #DC2626);
+  --color-chart-5: var(--theme-chart-5, #7C3AED);
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: theme("colors.gray.200");
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f8fafc;
+    color: #1e293b;
+    overscroll-behavior: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ---- Core Animations ---- */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes hero-fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-number-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Animated glow bar for KPI accents ---- */
+@keyframes kpi-glow-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* ---- Class-based animations ---- */
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-in {
+  animation: slide-in-right 0.3s ease-out both;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ---- Staggered children animation ---- */
+.stagger-children > * {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+
+/* ---- Chart card with mobile-optimised hover ---- */
+.chart-card {
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.chart-card:hover {
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* KPI card hover + active lift */
+.kpi-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.kpi-hover:hover {
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+.kpi-hover:active {
+  transform: translateY(0px);
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---- Recharts tooltip — mobile-friendly ---- */
+.recharts-default-tooltip {
+  border-radius: 10px !important;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid #e2e8f0 !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
+.recharts-tooltip-label {
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  margin-bottom: 4px !important;
+}
+
+/* ---- Smooth page transitions ---- */
+.page-enter {
+  animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ---- Mobile touch feedback ---- */
+@media (max-width: 1024px) {
+  .chart-card:active {
+    transform: scale(0.99);
+    transition: transform 0.1s ease;
+  }
+  .kpi-hover:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease;
+  }
+  button:active, a:active, select:active {
+    opacity: 0.85;
+    transition: opacity 0.08s ease;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ---- iPhone notch / Dynamic Island safe areas ---- */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ---- KPI accent stripe ---- */
+.kpi-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  overflow: hidden;
+}
+
+.kpi-accent-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: kpi-glow-slide 3s ease-in-out infinite;
+}
+
+/* ---- Recharts mobile legend sizing ---- */
+@media (max-width: 640px) {
+  .recharts-legend-item-text {
+    font-size: 10px !important;
+  }
+  .recharts-legend-wrapper {
+    padding-top: 4px !important;
+  }
+}
+
+.safe-area-inset {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (max-width: 640px) {
+  select option {
+    font-size: 16px;
+    padding: 12px;
+  }
+}
