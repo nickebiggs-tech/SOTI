@@ -54,6 +54,7 @@ export function OTCPage() {
   const [skuTab, setSkuTab] = useState<'value' | 'growing' | 'declining'>('value')
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
+  const skipMfrReset = useRef(false)
 
   // Navigation state receiver — from Dashboard click-through
   useEffect(() => {
@@ -65,8 +66,11 @@ export function OTCPage() {
     }
   }, [location.state])
 
-  // Reset manufacturer when category changes
-  useEffect(() => { setSelectedMfr(null) }, [selectedCat])
+  // Reset manufacturer when category changes (skip when drilling from SKU Intelligence)
+  useEffect(() => {
+    if (skipMfrReset.current) { skipMfrReset.current = false; return }
+    setSelectedMfr(null)
+  }, [selectedCat])
 
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
   const totalUnits = useMemo(() => otcCategories.reduce((s, c) => s + c.tyUnits, 0), [otcCategories])
@@ -175,6 +179,14 @@ export function OTCPage() {
   }, [state.otc])
 
   const activeOtcSkuList = skuTab === 'value' ? skuInsights.byValue : skuTab === 'growing' ? skuInsights.growing : skuInsights.declining
+
+  // Drill from SKU Intelligence → category + manufacturer context
+  const drillToSku = (category: string, manufacturer: string) => {
+    skipMfrReset.current = true
+    setSelectedCat(category)
+    setSelectedMfr(manufacturer)
+    setTimeout(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -299,9 +311,9 @@ export function OTCPage() {
             </thead>
             <tbody>
               {activeOtcSkuList.map((s, i) => (
-                <tr key={s.sku + i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                <tr key={s.sku + i} onClick={() => drillToSku(s.category, s.manufacturer)} className="border-b border-slate-50 hover:bg-teal-50/60 transition-colors cursor-pointer group" title={`Drill into ${s.category} → ${s.manufacturer}`}>
                   <td className="py-1.5 text-slate-400 font-bold">{i + 1}</td>
-                  <td className="py-1.5 text-slate-700 truncate max-w-[200px] font-medium">{s.sku}</td>
+                  <td className="py-1.5 text-slate-700 truncate max-w-[200px] font-medium group-hover:text-teal-700">{s.sku}</td>
                   <td className="py-1.5 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
                   <td className="py-1.5 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
                   <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
@@ -313,8 +325,9 @@ export function OTCPage() {
               ))}
             </tbody>
           </table>
+          <p className="mt-2 text-[8px] text-teal-400 italic">Click any row to drill into its category & manufacturer context</p>
           {skuTab === 'declining' && activeOtcSkuList.length > 0 && (
-            <div className="mt-3 flex items-start gap-2 bg-red-50/60 rounded-lg p-2.5">
+            <div className="mt-2 flex items-start gap-2 bg-red-50/60 rounded-lg p-2.5">
               <AlertTriangle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
               <p className="text-[9px] text-red-600/80 leading-relaxed">
                 These products are losing the most absolute value YoY. Investigate channel leakage, promotional fatigue, and competitive displacement. Consider pharmacy-exclusive promotions to defend share.
@@ -322,7 +335,7 @@ export function OTCPage() {
             </div>
           )}
           {skuTab === 'growing' && activeOtcSkuList.length > 0 && (
-            <div className="mt-3 flex items-start gap-2 bg-emerald-50/60 rounded-lg p-2.5">
+            <div className="mt-2 flex items-start gap-2 bg-emerald-50/60 rounded-lg p-2.5">
               <TrendingUp className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
               <p className="text-[9px] text-emerald-700/80 leading-relaxed">
                 High-growth products signal emerging consumer demand. Prioritise distribution expansion, pharmacist recommendation programs, and shelf-space optimisation to capture momentum.

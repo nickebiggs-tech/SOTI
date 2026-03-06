@@ -51,8 +51,10 @@ export function DispensePage() {
   const [selectedMfr, setSelectedMfr] = useState<string | null>(null)
   const [narrativeOpen, setNarrativeOpen] = useState(false)
   const [skuTab, setSkuTab] = useState<'value' | 'growing' | 'declining'>('value')
+  const [selectedSku, setSelectedSku] = useState<string | null>(null)
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
+  const skipMfrReset = useRef(false)
 
   // Navigation state receiver — from Dashboard click-through
   useEffect(() => {
@@ -65,8 +67,12 @@ export function DispensePage() {
     }
   }, [location.state])
 
-  // Reset manufacturer when category changes
-  useEffect(() => { setSelectedMfr(null) }, [selectedCat])
+  // Reset manufacturer when category changes (skip when drilling from SKU Intelligence)
+  useEffect(() => {
+    if (skipMfrReset.current) { skipMfrReset.current = false; return }
+    setSelectedMfr(null)
+  }, [selectedCat])
+  useEffect(() => { setSelectedSku(null) }, [selectedMfr])
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const totalUnits = useMemo(() => ethCategories.reduce((s, c) => s + c.tyUnits, 0), [ethCategories])
@@ -204,6 +210,29 @@ export function DispensePage() {
 
   const activeSkuList = skuTab === 'value' ? skuInsights.byValue : skuTab === 'growing' ? skuInsights.growing : skuInsights.declining
 
+  // Drill from SKU Intelligence → category + manufacturer context
+  const drillToSku = (category: string, manufacturer: string) => {
+    skipMfrReset.current = true
+    setSelectedCat(category)
+    setSelectedMfr(manufacturer)
+    setTimeout(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
+  }
+
+  // Per-SKU monthly trend (for clicked SKU in breakdown table)
+  const skuMonthlyTrend = useMemo(() => {
+    if (!selectedCat || !selectedMfr || !selectedSku) return []
+    const skuData = state.eth.filter(r => r.sku === selectedSku && r.category === selectedCat)
+    const map: Record<number, { sales: number; units: number }> = {}
+    skuData.forEach(r => {
+      if (!map[r.monthId]) map[r.monthId] = { sales: 0, units: 0 }
+      map[r.monthId]!.sales += r.sales
+      map[r.monthId]!.units += r.units
+    })
+    return Object.entries(map)
+      .map(([id, d]) => ({ monthId: parseInt(id, 10), month: `${id.slice(4)}/${id.slice(2, 4)}`, sales: d.sales, units: d.units }))
+      .sort((a, b) => a.monthId - b.monthId)
+  }, [selectedCat, selectedMfr, selectedSku, state.eth])
+
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
       <div>
@@ -328,9 +357,9 @@ export function DispensePage() {
             </thead>
             <tbody>
               {activeSkuList.map((s, i) => (
-                <tr key={s.sku} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                <tr key={s.sku} onClick={() => drillToSku(s.category, s.manufacturer)} className="border-b border-slate-50 hover:bg-violet-50/60 transition-colors cursor-pointer group" title={`Drill into ${s.category} → ${s.manufacturer}`}>
                   <td className="py-1.5 text-slate-400 font-bold">{i + 1}</td>
-                  <td className="py-1.5 text-slate-700 truncate max-w-[200px] font-medium">{s.sku}</td>
+                  <td className="py-1.5 text-slate-700 truncate max-w-[200px] font-medium group-hover:text-violet-700">{s.sku}</td>
                   <td className="py-1.5 text-slate-500 truncate hidden sm:table-cell text-[9px]">{s.molecule}</td>
                   <td className="py-1.5 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
                   <td className="py-1.5 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
@@ -343,8 +372,9 @@ export function DispensePage() {
               ))}
             </tbody>
           </table>
+          <p className="mt-2 text-[8px] text-violet-400 italic">Click any row to drill into its category & manufacturer context</p>
           {skuTab === 'declining' && activeSkuList.length > 0 && (
-            <div className="mt-3 flex items-start gap-2 bg-red-50/60 rounded-lg p-2.5">
+            <div className="mt-2 flex items-start gap-2 bg-red-50/60 rounded-lg p-2.5">
               <AlertTriangle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
               <p className="text-[9px] text-red-600/80 leading-relaxed">
                 These SKUs are losing the most absolute value YoY. Consider portfolio rationalisation, promotional intervention, or competitive displacement analysis.
@@ -352,7 +382,7 @@ export function DispensePage() {
             </div>
           )}
           {skuTab === 'growing' && activeSkuList.length > 0 && (
-            <div className="mt-3 flex items-start gap-2 bg-emerald-50/60 rounded-lg p-2.5">
+            <div className="mt-2 flex items-start gap-2 bg-emerald-50/60 rounded-lg p-2.5">
               <TrendingUp className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
               <p className="text-[9px] text-emerald-700/80 leading-relaxed">
                 High-growth SKUs represent incremental value opportunities. Suppliers should assess distribution gaps and invest in pharmacy engagement to accelerate adoption.
@@ -541,7 +571,12 @@ export function DispensePage() {
                   </thead>
                   <tbody>
                     {skuBreakdown.slice(0, 20).map((s) => (
-                      <tr key={s.sku} className="border-b border-slate-50 hover:bg-slate-50/50">
+                      <tr
+                        key={s.sku}
+                        onClick={() => setSelectedSku(selectedSku === s.sku ? null : s.sku)}
+                        className={`border-b border-slate-50 transition-colors cursor-pointer ${selectedSku === s.sku ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-slate-50/50'}`}
+                        title="Click to view monthly trend"
+                      >
                         <td className="py-1.5 text-slate-700 truncate max-w-[220px]">{s.sku}</td>
                         <td className="py-1.5 text-slate-500 truncate">{s.molecule}</td>
                         <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
@@ -553,7 +588,44 @@ export function DispensePage() {
                     ))}
                   </tbody>
                 </table>
+                <p className="mt-2 text-[8px] text-slate-400 italic">Click any SKU to view its monthly trend</p>
               </div>
+
+              {/* Per-SKU Monthly Trend */}
+              {selectedSku && skuMonthlyTrend.length > 0 && (
+                <div className="mt-4 border-t border-slate-100 pt-4 animate-fade-in-up">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-xs font-semibold text-blue-700">{selectedSku}</h4>
+                      <p className="text-[9px] text-slate-400 mt-0.5">Monthly dispensing trend — {skuMonthlyTrend.length} months</p>
+                    </div>
+                    <button onClick={() => setSelectedSku(null)} className="text-[9px] text-primary hover:underline">Close</button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <div className="bg-blue-50/50 rounded-lg p-2.5 text-center">
+                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">TY Value</p>
+                      <p className="text-sm font-bold text-slate-800">{formatCompactDollar(skuMonthlyTrend.reduce((s, m) => s + m.sales, 0))}</p>
+                    </div>
+                    <div className="bg-blue-50/50 rounded-lg p-2.5 text-center">
+                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">Avg Monthly</p>
+                      <p className="text-sm font-bold text-slate-800">{formatCompactDollar(skuMonthlyTrend.reduce((s, m) => s + m.sales, 0) / skuMonthlyTrend.length)}</p>
+                    </div>
+                    <div className="bg-blue-50/50 rounded-lg p-2.5 text-center">
+                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">Total Units</p>
+                      <p className="text-sm font-bold text-slate-800">{formatCompact(skuMonthlyTrend.reduce((s, m) => s + m.units, 0))}</p>
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={skuMonthlyTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis dataKey="month" tick={{ fontSize: 8 }} stroke="#94a3b8" />
+                      <YAxis tick={{ fontSize: 8 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
+                      <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+                      <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           )}
         </div>
