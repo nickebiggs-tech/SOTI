@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -101,6 +102,7 @@ const STRATEGIC_THEMES: ThemeCard[] = [
 export function InsightsPage() {
   const { ethCategories, otcCategories, ethTotalTY, ethTotalLY, otcTotalTY, otcTotalLY, state } = useData()
   const [expanded, setExpanded] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
@@ -213,12 +215,12 @@ export function InsightsPage() {
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Cross-Market Growth Leaders</h3>
           <div className="space-y-2">
             {topGrowing.map((c, i) => (
-              <div key={c.category} className="flex items-center gap-2 animate-fade-in-up" style={{ animationDelay: `${250 + i * 50}ms` }}>
+              <button key={c.category} onClick={() => navigate(c.segment === 'Rx' ? '/dispense' : '/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 animate-fade-in-up hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors cursor-pointer" style={{ animationDelay: `${250 + i * 50}ms` }}>
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${c.segment === 'Rx' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>{c.segment}</span>
-                <span className="text-[10px] text-slate-600 flex-1 truncate">{c.category}</span>
+                <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -286,9 +288,9 @@ export function InsightsPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
           {topDeclining.map((c) => (
-            <div key={c.category} className="flex items-center gap-2 py-1.5 border-b border-slate-50">
+            <button key={c.category} onClick={() => navigate(c.segment === 'Rx' ? '/dispense' : '/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 py-1.5 border-b border-slate-50 hover:bg-slate-50 rounded transition-colors cursor-pointer">
               <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${c.segment === 'Rx' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>{c.segment}</span>
-              <span className="text-[10px] text-slate-600 flex-1 truncate">{c.category}</span>
+              <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.category}</span>
               <span className="text-[10px] font-semibold text-slate-500">{formatCompactDollar(c.tyValue)}</span>
               <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
               <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -297,7 +299,7 @@ export function InsightsPage() {
                   style={{ width: `${Math.min(Math.abs(c.valueGrowth) * 2, 100)}%` }}
                 />
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>

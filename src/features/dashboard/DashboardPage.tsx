@@ -77,8 +77,8 @@ export function DashboardPage() {
   const otcMfrCount = useMemo(() => new Set(state.otc.map(r => r.manufacturer)).size, [state.otc])
 
   // Top 10 categories for each
-  const ethTop10 = ethCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, value: Math.round(c.tyValue), growth: Math.round(c.valueGrowth * 10) / 10 }))
-  const otcTop10 = otcCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, value: Math.round(c.tyValue), growth: Math.round(c.valueGrowth * 10) / 10 }))
+  const ethTop10 = ethCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, fullName: c.category, value: Math.round(c.tyValue), growth: Math.round(c.valueGrowth * 10) / 10 }))
+  const otcTop10 = otcCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, fullName: c.category, value: Math.round(c.tyValue), growth: Math.round(c.valueGrowth * 10) / 10 }))
 
   // Market split donut
   const marketSplit = [
@@ -130,11 +130,11 @@ export function DashboardPage() {
           </h3>
           <div className="space-y-1.5">
             {rxGrowers.map((c) => (
-              <div key={c.category} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+              <button key={c.category} onClick={() => navigate('/dispense', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
+                <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
                 <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -144,11 +144,11 @@ export function DashboardPage() {
           </h3>
           <div className="space-y-1.5">
             {rxDecliners.map((c) => (
-              <div key={c.category} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+              <button key={c.category} onClick={() => navigate('/dispense', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
+                <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
                 <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -158,11 +158,11 @@ export function DashboardPage() {
           </h3>
           <div className="space-y-1.5">
             {otcGrowers.map((c) => (
-              <div key={c.category} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+              <button key={c.category} onClick={() => navigate('/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
+                <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
                 <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -172,11 +172,11 @@ export function DashboardPage() {
           </h3>
           <div className="space-y-1.5">
             {otcDecliners.map((c) => (
-              <div key={c.category} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
+              <button key={c.category} onClick={() => navigate('/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
+                <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
                 <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -254,14 +254,14 @@ export function DashboardPage() {
           </div>
           <div className="space-y-2">
             {ethTop10.slice(0, 7).map((c, i) => (
-              <div key={c.name} className="flex items-center gap-2">
+              <button key={c.name} onClick={() => navigate('/dispense', { state: { selectedCategory: c.fullName } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                <span className="text-[10px] text-slate-600 flex-1 truncate">{c.name}</span>
+                <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.name}</span>
                 <span className="text-[10px] font-semibold text-slate-700">{formatCompactDollar(c.value)}</span>
                 <span className={`text-[9px] font-bold w-12 text-right ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {c.growth >= 0 ? '+' : ''}{c.growth}%
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -276,14 +276,14 @@ export function DashboardPage() {
           </div>
           <div className="space-y-2">
             {otcTop10.slice(0, 7).map((c, i) => (
-              <div key={c.name} className="flex items-center gap-2">
+              <button key={c.name} onClick={() => navigate('/otc', { state: { selectedCategory: c.fullName } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                <span className="text-[10px] text-slate-600 flex-1 truncate">{c.name}</span>
+                <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.name}</span>
                 <span className="text-[10px] font-semibold text-slate-700">{formatCompactDollar(c.value)}</span>
                 <span className={`text-[9px] font-bold w-12 text-right ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {c.growth >= 0 ? '+' : ''}{c.growth}%
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>

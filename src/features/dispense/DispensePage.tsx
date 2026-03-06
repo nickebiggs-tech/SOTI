@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import {
   BarChart, Bar, Cell, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { Pill, ChevronRight, X, Search, Factory, FlaskConical, Package, Sparkles, TrendingUp, TrendingDown } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
+import { Pill, ChevronRight, ChevronDown, X, Search, Factory, FlaskConical, Package, Sparkles, TrendingUp, TrendingDown } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
@@ -47,6 +48,23 @@ export function DispensePage() {
   const { ethCategories, ethTotalTY, ethTotalLY, state } = useData()
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [selectedMfr, setSelectedMfr] = useState<string | null>(null)
+  const location = useLocation()
+  const drillRef = useRef<HTMLDivElement>(null)
+
+  // Navigation state receiver — from Dashboard click-through
+  useEffect(() => {
+    const navState = location.state as { selectedCategory?: string } | null
+    if (navState?.selectedCategory) {
+      setSelectedCat(navState.selectedCategory)
+      // Clear navigation state so refresh doesn't re-trigger
+      window.history.replaceState({}, '')
+      setTimeout(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
+    }
+  }, [location.state])
+
+  // Reset manufacturer when category changes
+  useEffect(() => { setSelectedMfr(null) }, [selectedCat])
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const totalUnits = useMemo(() => ethCategories.reduce((s, c) => s + c.tyUnits, 0), [ethCategories])
@@ -134,6 +152,22 @@ export function DispensePage() {
       : `${formatCompactDollar(incremental)} in value has shifted — suppliers should assess competitive dynamics and promotional ROI.`
     return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCompactDollar(catInfo.tyValue)}. ${topMfr.manufacturer} leads with ${topMfr.share.toFixed(1)}% share across ${catInfo.manufacturerCount} suppliers and ${catInfo.skuCount} SKUs. ${action}`
   }, [selectedCat, mfrBreakdown, ethCategories])
+
+  // SKU breakdown for selected manufacturer within selected category
+  const skuBreakdown = useMemo(() => {
+    if (!selectedCat || !selectedMfr) return []
+    const catMfrData = state.eth.filter(r => r.category === selectedCat && r.manufacturer === selectedMfr)
+    const map: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number; molecule: string }> = {}
+    catMfrData.forEach(r => {
+      if (!map[r.sku]) map[r.sku] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0, molecule: r.molecule }
+      const s = map[r.sku]!
+      if (r.period === 'APR24-MAR25') { s.tyV += r.sales; s.tyU += r.units }
+      else { s.lyV += r.sales; s.lyU += r.units }
+    })
+    return Object.entries(map)
+      .map(([sku, s]) => ({ sku, molecule: s.molecule, tyValue: s.tyV, lyValue: s.lyV, growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 0 }))
+      .sort((a, b) => b.tyValue - a.tyValue)
+  }, [selectedCat, selectedMfr, state.eth])
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -262,7 +296,7 @@ export function DispensePage() {
 
       {/* Drill-in panel */}
       {selectedCat && mfrBreakdown.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up">
+        <div ref={drillRef} className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up">
           <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-100 bg-blue-50/30">
             <div>
               <h3 className="text-sm font-bold text-slate-800">{selectedCat}</h3>
@@ -328,26 +362,75 @@ export function DispensePage() {
               </div>
             </div>
 
-            {/* Manufacturer share table */}
+            {/* Manufacturer share table — click to drill into SKUs */}
             <div>
               <h4 className="text-xs font-semibold text-slate-600 mb-3">Manufacturer Share & Growth</h4>
-              <div className="space-y-1.5 max-h-[200px] overflow-y-auto scrollbar-thin">
-                {mfrBreakdown.slice(0, 12).map((m, i) => (
-                  <div key={m.manufacturer} className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                    <span className="text-[10px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
-                    <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
-                    <span className={`text-[9px] font-bold w-11 text-right ${m.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {m.valueGrowth >= 0 ? '+' : ''}{m.valueGrowth.toFixed(0)}%
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-1 max-h-[220px] overflow-y-auto scrollbar-thin">
+                {mfrBreakdown.slice(0, 12).map((m, i) => {
+                  const isSel = selectedMfr === m.manufacturer
+                  return (
+                    <button
+                      key={m.manufacturer}
+                      onClick={() => setSelectedMfr(isSel ? null : m.manufacturer)}
+                      className={`w-full flex items-center gap-2 rounded-lg p-1.5 -mx-1 transition-colors cursor-pointer ${isSel ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-slate-50'}`}
+                    >
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{m.manufacturer}</span>
+                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
+                      <span className={`text-[9px] font-bold w-11 text-right ${m.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {m.valueGrowth >= 0 ? '+' : ''}{m.valueGrowth.toFixed(0)}%
+                      </span>
+                      <ChevronDown className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${isSel ? 'rotate-180' : ''}`} />
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
+
+          {/* SKU breakdown for selected manufacturer */}
+          {selectedMfr && skuBreakdown.length > 0 && (
+            <div className="border-t border-slate-100 p-4 sm:p-5 animate-fade-in-up">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-700">{selectedMfr} — SKU Breakdown</h4>
+                  <p className="text-[9px] text-slate-400 mt-0.5">{skuBreakdown.length} SKUs in {selectedCat}</p>
+                </div>
+                <button onClick={() => setSelectedMfr(null)} className="text-[9px] text-primary hover:underline">
+                  Clear
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[10px]">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="text-left py-1.5 text-slate-500 font-medium">SKU</th>
+                      <th className="text-left py-1.5 text-slate-500 font-medium w-24">Molecule</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-20">TY Value</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-20">LY Value</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-16">Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {skuBreakdown.slice(0, 20).map((s) => (
+                      <tr key={s.sku} className="border-b border-slate-50 hover:bg-slate-50/50">
+                        <td className="py-1.5 text-slate-700 truncate max-w-[220px]">{s.sku}</td>
+                        <td className="py-1.5 text-slate-500 truncate">{s.molecule}</td>
+                        <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
+                        <td className="text-right py-1.5 text-slate-500">{formatCompactDollar(s.lyValue)}</td>
+                        <td className={`text-right py-1.5 font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {s.growth >= 0 ? '+' : ''}{s.growth.toFixed(0)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

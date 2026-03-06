@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database } from 'lucide-react'
+import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database, Key, X, Check } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
@@ -86,9 +86,14 @@ INSTRUCTIONS:
 - Position insights as commercially valuable — this is intelligence worth paying for`
 }
 
+/** Get API key — runtime (localStorage) takes priority, then env var fallback */
+function getApiKey(): string {
+  return localStorage.getItem('soti_api_key') || (import.meta.env.VITE_ANTHROPIC_API_KEY as string) || ''
+}
+
 /** Call Anthropic API directly */
 async function callClaude(messages: { role: string; content: string }[], systemPrompt: string): Promise<string> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string
+  const apiKey = getApiKey()
 
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY_MISSING')
@@ -180,8 +185,27 @@ export function AskPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [apiKey, setApiKey] = useState(() => getApiKey())
+  const [keyInput, setKeyInput] = useState('')
+  const [showKeyInput, setShowKeyInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
-  const hasApiKey = !!import.meta.env.VITE_ANTHROPIC_API_KEY
+  const hasApiKey = !!apiKey
+
+  const saveApiKey = (key: string) => {
+    const trimmed = key.trim()
+    if (trimmed) {
+      localStorage.setItem('soti_api_key', trimmed)
+      setApiKey(trimmed)
+    }
+    setKeyInput('')
+    setShowKeyInput(false)
+  }
+
+  const clearApiKey = () => {
+    localStorage.removeItem('soti_api_key')
+    setApiKey(getApiKey()) // falls back to env var if present
+    setShowKeyInput(false)
+  }
 
   const systemPrompt = useMemo(() => buildDataContext(data), [data])
 
@@ -268,10 +292,46 @@ export function AskPage() {
             </p>
           </div>
         </div>
-        {!hasApiKey && (
+        {!hasApiKey && !showKeyInput && (
           <div className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
             <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <p className="text-[10px] text-amber-700">Add your Anthropic API key to <code className="bg-amber-100 px-1 rounded">.env.local</code> to enable Claude-powered answers.</p>
+            <p className="text-[10px] text-amber-700 flex-1">Add your Anthropic API key to enable Claude-powered answers.</p>
+            <button onClick={() => setShowKeyInput(true)} className="text-[10px] font-semibold text-primary hover:underline shrink-0 flex items-center gap-1">
+              <Key className="w-3 h-3" /> Add Key
+            </button>
+          </div>
+        )}
+        {hasApiKey && !showKeyInput && (
+          <div className="mt-2 flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+            <p className="text-[10px] text-emerald-700 flex-1">Claude AI connected</p>
+            <button onClick={() => setShowKeyInput(true)} className="text-[9px] text-slate-400 hover:text-slate-600 shrink-0">
+              Change key
+            </button>
+          </div>
+        )}
+        {showKeyInput && (
+          <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+            <Key className="w-3.5 h-3.5 text-primary shrink-0" />
+            <input
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveApiKey(keyInput) }}
+              placeholder="sk-ant-api03-..."
+              className="flex-1 text-[11px] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30"
+              type="password"
+            />
+            <button onClick={() => saveApiKey(keyInput)} disabled={!keyInput.trim()} className="text-[10px] font-semibold text-primary hover:underline disabled:opacity-40">
+              Save
+            </button>
+            {hasApiKey && (
+              <button onClick={clearApiKey} className="text-[10px] text-red-500 hover:underline">
+                Clear
+              </button>
+            )}
+            <button onClick={() => setShowKeyInput(false)} className="p-0.5 hover:bg-slate-200 rounded">
+              <X className="w-3 h-3 text-slate-400" />
+            </button>
           </div>
         )}
       </div>
