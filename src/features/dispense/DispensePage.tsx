@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { useLocation } from 'react-router-dom'
-import { Pill, ChevronRight, ChevronDown, X, Search, Factory, FlaskConical, Package, Sparkles, TrendingUp, TrendingDown, BarChart3, Award, AlertTriangle } from 'lucide-react'
+import { Pill, ChevronRight, ChevronDown, X, Search, Factory, FlaskConical, Package, Sparkles, TrendingUp, TrendingDown, BarChart3, Award, AlertTriangle, Target, DollarSign } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
@@ -52,6 +52,7 @@ export function DispensePage() {
   const [narrativeOpen, setNarrativeOpen] = useState(false)
   const [skuTab, setSkuTab] = useState<'value' | 'growing' | 'declining'>('value')
   const [selectedSku, setSelectedSku] = useState<string | null>(null)
+  const [catTab, setCatTab] = useState<'leaders' | 'gainers' | 'decliners'>('leaders')
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
   const skipMfrReset = useRef(false)
@@ -85,11 +86,22 @@ export function DispensePage() {
   ), [ethTotalTY, ethGrowth, ethCategories, totalUnits, mfrCount])
 
   // Growth leaders & decliners
-  const growthData = useMemo(() => {
-    const growing = [...ethCategories].filter(c => c.lyValue > 10000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
-    const declining = [...ethCategories].filter(c => c.lyValue > 10000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 5)
-    return { growing, declining }
-  }, [ethCategories])
+  // Category landscape — absolute $ movers & market share
+  const categoryMovers = useMemo(() => {
+    const withMeta = ethCategories
+      .filter(c => c.lyValue > 5000)
+      .map(c => ({
+        ...c,
+        absChange: c.tyValue - c.lyValue,
+        shareOfMarket: ethTotalTY ? (c.tyValue / ethTotalTY) * 100 : 0,
+      }))
+    const topByValue = [...withMeta].sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
+    const biggestGainers = [...withMeta].filter(c => c.absChange > 0).sort((a, b) => b.absChange - a.absChange).slice(0, 8)
+    const biggestDecliners = [...withMeta].filter(c => c.absChange < 0).sort((a, b) => a.absChange - b.absChange).slice(0, 8)
+    return { topByValue, biggestGainers, biggestDecliners }
+  }, [ethCategories, ethTotalTY])
+
+  const activeCatList = catTab === 'leaders' ? categoryMovers.topByValue : catTab === 'gainers' ? categoryMovers.biggestGainers : categoryMovers.biggestDecliners
 
   const filteredCats = useMemo(() => {
     if (!search) return ethCategories
@@ -160,6 +172,16 @@ export function DispensePage() {
       : `${formatCompactDollar(incremental)} in value has shifted — suppliers should assess competitive dynamics and promotional ROI.`
     return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCompactDollar(catInfo.tyValue)}. ${topMfr.manufacturer} leads with ${topMfr.share.toFixed(1)}% share across ${catInfo.manufacturerCount} suppliers and ${catInfo.skuCount} SKUs. ${action}`
   }, [selectedCat, mfrBreakdown, ethCategories])
+
+  // Growth drivers — which manufacturers are driving category movement
+  const growthDrivers = useMemo(() => {
+    if (!selectedCat || mfrBreakdown.length === 0) return { gainers: [], decliners: [] }
+    const withChange = mfrBreakdown.map(m => ({ ...m, absChange: m.tyValue - m.lyValue }))
+    return {
+      gainers: withChange.filter(m => m.absChange > 0).sort((a, b) => b.absChange - a.absChange).slice(0, 5),
+      decliners: withChange.filter(m => m.absChange < 0).sort((a, b) => a.absChange - b.absChange).slice(0, 5),
+    }
+  }, [selectedCat, mfrBreakdown])
 
   // SKU breakdown for selected manufacturer within selected category
   const skuBreakdown = useMemo(() => {
@@ -272,35 +294,87 @@ export function DispensePage() {
         )}
       </div>
 
-      {/* Growth winners & losers */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-          <h3 className="text-xs font-semibold text-emerald-700 mb-2.5 flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5" /> Growth Leaders
-          </h3>
-          <div className="space-y-2">
-            {growthData.growing.map((c, i) => (
-              <button key={c.category} onClick={() => setSelectedCat(c.category)} className="w-full flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors">
-                <span className="text-[10px] font-bold text-emerald-600 w-6">{i + 1}.</span>
-                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
-                <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
-              </button>
-            ))}
+      {/* ── Category Landscape ── */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Target className="w-4 h-4 text-primary shrink-0" />
+            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Category Landscape</h3>
+            <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">{ethCategories.length} categories</span>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-          <h3 className="text-xs font-semibold text-red-600 mb-2.5 flex items-center gap-1.5">
-            <TrendingDown className="w-3.5 h-3.5" /> Under Pressure
-          </h3>
-          <div className="space-y-2">
-            {growthData.declining.map((c, i) => (
-              <button key={c.category} onClick={() => setSelectedCat(c.category)} className="w-full flex items-center gap-2 text-left hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors">
-                <span className="text-[10px] font-bold text-red-500 w-6">{i + 1}.</span>
-                <span className="text-[10px] text-slate-700 flex-1 truncate">{c.category}</span>
-                <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
-              </button>
-            ))}
+        <div className="flex border-b border-slate-100">
+          {([
+            { key: 'leaders' as const, label: 'Leaders', fullLabel: 'Market Leaders', icon: <Award className="w-3 h-3" /> },
+            { key: 'gainers' as const, label: '$ Gains', fullLabel: 'Biggest $ Gains', icon: <TrendingUp className="w-3 h-3" /> },
+            { key: 'decliners' as const, label: '$ Losses', fullLabel: 'Biggest $ Losses', icon: <TrendingDown className="w-3 h-3" /> },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setCatTab(tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-3 text-[9px] sm:text-[10px] font-semibold transition-colors ${
+                catTab === tab.key
+                  ? 'text-primary border-b-2 border-primary bg-blue-50/40'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {tab.icon} <span className="sm:hidden">{tab.label}</span><span className="hidden sm:inline">{tab.fullLabel}</span>
+            </button>
+          ))}
+        </div>
+        <div className="p-3 sm:p-5">
+          <div className="space-y-1">
+            {activeCatList.map((c, i) => {
+              const isGainerTab = catTab === 'gainers'
+              const isDeclinerTab = catTab === 'decliners'
+              const maxVal = activeCatList[0]?.tyValue || 1
+              const barWidth = (c.tyValue / maxVal) * 100
+              return (
+                <button
+                  key={c.category}
+                  onClick={() => { setSelectedCat(c.category); setTimeout(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300) }}
+                  className={`w-full text-left rounded-lg p-2 sm:p-2.5 transition-colors cursor-pointer group ${
+                    selectedCat === c.category ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-slate-50 active:bg-blue-50/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <span className="text-[10px] font-bold text-slate-400 w-4 shrink-0">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-slate-800 truncate group-hover:text-primary">{c.category}</span>
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                          {(isGainerTab || isDeclinerTab) && (
+                            <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {c.absChange >= 0 ? '+' : ''}{formatCompactDollar(c.absChange)}
+                            </span>
+                          )}
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 hidden sm:inline">{formatCompactDollar(c.tyValue)}</span>
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 sm:hidden">{formatCompactDollar(c.tyValue)}</span>
+                          <span className={`text-[9px] font-bold w-12 text-right ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${barWidth}%`,
+                              backgroundColor: isDeclinerTab ? '#DC2626' : isGainerTab ? '#059669' : COLORS[i % COLORS.length],
+                            }}
+                          />
+                        </div>
+                        <span className="text-[8px] text-slate-400 w-10 text-right shrink-0">{c.shareOfMarket.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 group-hover:text-primary transition-colors" />
+                  </div>
+                </button>
+              )
+            })}
           </div>
+          <p className="mt-2 text-[8px] text-blue-400 italic">Tap any category to drill into manufacturer & SKU drivers</p>
         </div>
       </div>
 
@@ -468,6 +542,46 @@ export function DispensePage() {
               <div className="flex items-start gap-2">
                 <Sparkles className="w-3 h-3 text-primary shrink-0 mt-0.5" />
                 <p className="text-[11px] text-slate-600 leading-relaxed">{catNarrative}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Growth Drivers — which manufacturers are driving the movement */}
+          {(growthDrivers.gainers.length > 0 || growthDrivers.decliners.length > 0) && (
+            <div className="px-4 sm:px-5 py-3 border-b border-slate-100">
+              <div className="flex items-center gap-1.5 mb-2">
+                <DollarSign className="w-3 h-3 text-primary" />
+                <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Value Drivers</h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {growthDrivers.gainers.length > 0 && (
+                  <div>
+                    <p className="text-[8px] font-semibold text-emerald-600 uppercase tracking-wider mb-1.5">Growth Contributors</p>
+                    <div className="space-y-1">
+                      {growthDrivers.gainers.map(m => (
+                        <button key={m.manufacturer} onClick={() => setSelectedMfr(m.manufacturer)} className="w-full flex items-center gap-1.5 text-left hover:bg-emerald-50 active:bg-emerald-100/50 rounded p-1 -mx-1 transition-colors">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="text-[9px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(m.absChange)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {growthDrivers.decliners.length > 0 && (
+                  <div>
+                    <p className="text-[8px] font-semibold text-red-500 uppercase tracking-wider mb-1.5">Value Erosion</p>
+                    <div className="space-y-1">
+                      {growthDrivers.decliners.map(m => (
+                        <button key={m.manufacturer} onClick={() => setSelectedMfr(m.manufacturer)} className="w-full flex items-center gap-1.5 text-left hover:bg-red-50 active:bg-red-100/50 rounded p-1 -mx-1 transition-colors">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                          <span className="text-[9px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
+                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(m.absChange)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
