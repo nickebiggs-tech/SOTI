@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './theme/ThemeProvider'
 import { AuthProvider, RequireAuth } from './auth/AuthContext'
+import { DataProvider } from './data/DataProvider'
 import { AppLayout } from './components/layout/AppLayout'
 import { LoginPage } from './features/login/LoginPage'
 import { DashboardPage } from './features/dashboard/DashboardPage'
+import { DispensePage } from './features/dispense/DispensePage'
+import { OTCPage } from './features/otc/OTCPage'
 import { BrandingPage } from './features/admin/BrandingPage'
 
 export default function App() {
@@ -14,8 +17,10 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route element={<RequireAuth />}>
-              <Route element={<AppLayout />}>
+              <Route element={<DataProvider><AppLayout /></DataProvider>}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/dispense" element={<DispensePage />} />
+                <Route path="/otc" element={<OTCPage />} />
                 <Route path="/admin/branding" element={<BrandingPage />} />
               </Route>
             </Route>

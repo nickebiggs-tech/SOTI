@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
+  Pill,
+  ShoppingBag,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -12,6 +14,8 @@ import { useTheme } from '../../theme/ThemeProvider'
 
 const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/dispense', icon: Pill, label: 'Dispense' },
+  { to: '/otc', icon: ShoppingBag, label: 'OTC' },
   { to: '/admin/branding', icon: Settings, label: 'Settings' },
 ]
 
@@ -35,10 +39,11 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         ) : (
           <div className="flex-1 overflow-hidden">
             <div className="flex items-center gap-2.5">
-              <span className="text-[15px] font-extrabold text-white tracking-tight">SOTI</span>
+              <span className="text-[17px] font-extrabold text-white tracking-tight">SOTI</span>
+              <span className="text-[9px] text-white/40 font-medium">by NostraData</span>
             </div>
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-[8px] text-white/30 font-semibold uppercase tracking-widest border border-white/10 rounded px-1.5 py-0.5">Intelligence</span>
+            <div className="mt-1">
+              <span className="text-[8px] text-white/30 font-semibold uppercase tracking-widest">State of the Industry</span>
             </div>
           </div>
         )}
