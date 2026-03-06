@@ -50,6 +50,7 @@ export function OTCPage() {
   const [selectedCat, setSelectedCat] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [selectedMfr, setSelectedMfr] = useState<string | null>(null)
+  const [narrativeOpen, setNarrativeOpen] = useState(false)
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
 
@@ -154,29 +155,32 @@ export function OTCPage() {
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Consumer health market — category & manufacturer drill-in</p>
       </div>
 
-      {/* Auto-Narrative */}
-      <div className="bg-gradient-to-r from-teal-900 to-emerald-900 rounded-xl p-4 sm:p-5 text-white animate-fade-in-up overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.03] rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-2.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-400/80">Market Narrative</span>
-          </div>
-          <div className="space-y-1.5">
-            {narrative.map((line, i) => (
-              <p key={i} className="text-[11px] sm:text-xs text-white/80 leading-relaxed">{line}</p>
-            ))}
-          </div>
-          <p className="text-[8px] text-white/25 mt-2">Powered by NostraData</p>
-        </div>
-      </div>
-
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
         <KPICard title="OTC Market" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Total Units" value={formatCompact(totalUnits)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="Categories" value={`${otcCategories.length}`} icon={<TrendingUp className="w-4 h-4" />} />
+      </div>
+
+      {/* Market Narrative — compact collapsible */}
+      <div className="bg-gradient-to-r from-teal-900 to-emerald-900 rounded-xl overflow-hidden">
+        <button onClick={() => setNarrativeOpen(v => !v)} className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer">
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-400/80">Market Narrative</span>
+            <p className="text-[11px] sm:text-xs text-white/75 leading-relaxed mt-1 line-clamp-2">{narrative[0]}</p>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-white/40 shrink-0 mt-0.5 transition-transform duration-200 ${narrativeOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {narrativeOpen && (
+          <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 border-t border-white/10 pt-3 ml-[26px] sm:ml-[30px]">
+            {narrative.slice(1).map((line, i) => (
+              <p key={i} className="text-[11px] text-white/60 leading-relaxed">{line}</p>
+            ))}
+            <p className="text-[8px] text-white/25 mt-2">Powered by NostraData</p>
+          </div>
+        )}
       </div>
 
       {/* Growth winners & losers */}
