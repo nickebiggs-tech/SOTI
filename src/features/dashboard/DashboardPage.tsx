@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import {
-  Pill, ShoppingBag, ArrowRight,
+  Pill, ShoppingBag, ArrowRight, ChevronDown,
   DollarSign, Package, Factory, FlaskConical, Sparkles, Target, AlertTriangle,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
@@ -63,6 +63,7 @@ function generateMarketNarrative(
 export function DashboardPage() {
   const { ethCategories, otcCategories, ethTotalTY, ethTotalLY, otcTotalTY, otcTotalLY, state } = useData()
   const navigate = useNavigate()
+  const [narrativeOpen, setNarrativeOpen] = useState(false)
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
@@ -108,24 +109,6 @@ export function DashboardPage() {
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">State of the Industry</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
           Australian pharmacy market — Dispense & OTC combined view
-        </p>
-      </div>
-
-      {/* Executive Market Intelligence */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl p-4 sm:p-6 text-white animate-fade-in-up">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-400/80">Executive Market Intelligence</span>
-        </div>
-        <div className="space-y-2.5">
-          {narrative.map((line, i) => (
-            <p key={i} className="text-xs sm:text-sm text-white/85 leading-relaxed">{line}</p>
-          ))}
-        </div>
-        <p className="text-[9px] text-white/30 mt-3 flex items-center gap-1">
-          <span>Source: {formatCompact(state.eth.length + state.otc.length)} product-level records</span>
-          <span className="text-white/15">&middot;</span>
-          <span>NostraData Market Intelligence</span>
         </p>
       </div>
 
@@ -197,6 +180,31 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Market Intelligence — compact collapsible */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl overflow-hidden animate-fade-in-up">
+        <button
+          onClick={() => setNarrativeOpen(v => !v)}
+          className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-amber-400/80">Market Intelligence</span>
+            <p className="text-[11px] sm:text-xs text-white/75 leading-relaxed mt-1 line-clamp-2">{narrative[0]}</p>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-white/40 shrink-0 mt-0.5 transition-transform duration-200 ${narrativeOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {narrativeOpen && (
+          <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 border-t border-white/10 pt-3 ml-[26px] sm:ml-[30px]">
+            {narrative.slice(1).map((line, i) => (
+              <p key={i} className="text-[11px] text-white/60 leading-relaxed">{line}</p>
+            ))}
+            <p className="text-[8px] text-white/25 mt-2">
+              Source: {formatCompact(state.eth.length + state.otc.length)} records · NostraData Market Intelligence
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Quick nav cards */}

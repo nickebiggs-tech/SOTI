@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database, Lightbulb } from 'lucide-react'
+import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
@@ -9,14 +9,18 @@ interface Message {
   timestamp: Date
 }
 
-const SUGGESTED_QUESTIONS = [
-  'What are the fastest growing Rx categories?',
-  'How is the OTC market performing vs last year?',
-  'Which manufacturers dominate the prescription market?',
-  'What is the total pharmacy market value?',
-  'Which categories are declining the most?',
-  'What is the average growth rate across all Rx categories?',
-]
+/** Tags for category-level question chips */
+type QuestionTag = 'SKU' | 'Category' | 'Supplier' | 'Molecule' | 'Channel' | 'Risk' | 'Opportunity' | 'Strategy'
+const TAG_COLORS: Record<QuestionTag, string> = {
+  SKU:         'bg-blue-100 text-blue-700',
+  Category:    'bg-violet-100 text-violet-700',
+  Supplier:    'bg-amber-100 text-amber-700',
+  Molecule:    'bg-teal-100 text-teal-700',
+  Channel:     'bg-pink-100 text-pink-700',
+  Risk:        'bg-red-100 text-red-700',
+  Opportunity: 'bg-emerald-100 text-emerald-700',
+  Strategy:    'bg-indigo-100 text-indigo-700',
+}
 
 /** Build a data context summary for the AI from live data */
 function buildDataContext(data: ReturnType<typeof useData>): string {
@@ -181,6 +185,27 @@ export function AskPage() {
 
   const systemPrompt = useMemo(() => buildDataContext(data), [data])
 
+  /** Dynamic, data-driven questions targeting category & SKU level */
+  const suggestedQuestions = useMemo(() => {
+    const { ethCategories, otcCategories } = data
+    const topRx = ethCategories[0]
+    const topOtc = otcCategories[0]
+    const secondRx = ethCategories[1]
+    const fastGrower = [...ethCategories].filter(c => c.lyValue > 10000).sort((a, b) => b.valueGrowth - a.valueGrowth)[0]
+    const atRiskOtc = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth)[0]
+
+    return [
+      { q: `Which SKUs are driving growth in ${topRx?.category ?? 'the top Rx category'}?`, tag: 'SKU' as QuestionTag },
+      { q: `What is the manufacturer share breakdown for ${topOtc?.category ?? 'the leading OTC segment'}?`, tag: 'Supplier' as QuestionTag },
+      { q: `Why is ${fastGrower?.category ?? 'this category'} growing ${fastGrower ? `+${fastGrower.valueGrowth.toFixed(1)}%` : 'so fast'} — what's the commercial opportunity?`, tag: 'Opportunity' as QuestionTag },
+      { q: `Which OTC categories are losing share to grocery and online channels?`, tag: 'Channel' as QuestionTag },
+      { q: `What molecules are driving Rx value in ${secondRx?.category ?? 'key therapy areas'}?`, tag: 'Molecule' as QuestionTag },
+      { q: `What is the promotional ROI risk in ${atRiskOtc?.category ?? 'declining OTC segments'}?`, tag: 'Risk' as QuestionTag },
+      { q: `Which Rx categories have the highest supplier concentration?`, tag: 'Category' as QuestionTag },
+      { q: `What category-level trade investment opportunities exist for FY25?`, tag: 'Strategy' as QuestionTag },
+    ]
+  }, [data])
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -261,16 +286,16 @@ export function AskPage() {
             <h2 className="text-lg font-bold text-slate-700 mb-1">Ask SOTI anything</h2>
             <p className="text-xs text-slate-400 max-w-xs mb-6">I can answer questions about the Australian pharmacy market using live data.</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full">
-              {SUGGESTED_QUESTIONS.map((q, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl w-full">
+              {suggestedQuestions.map((sq, i) => (
                 <button
                   key={i}
-                  onClick={() => { setInput(q); }}
+                  onClick={() => { setInput(sq.q); }}
                   className="text-left px-3 py-2.5 bg-white rounded-lg border border-slate-200 hover:border-primary/30 hover:shadow-sm transition-all group"
                 >
                   <div className="flex items-start gap-2">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                    <span className="text-[11px] text-slate-600 group-hover:text-primary transition-colors">{q}</span>
+                    <span className={`text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0 mt-0.5 ${TAG_COLORS[sq.tag]}`}>{sq.tag}</span>
+                    <span className="text-[11px] text-slate-600 group-hover:text-primary transition-colors leading-snug">{sq.q}</span>
                   </div>
                 </button>
               ))}
