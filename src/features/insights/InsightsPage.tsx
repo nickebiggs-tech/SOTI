@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
-import { formatCompact, formatCurrency } from '../../lib/formatters'
+import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
 const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
 
@@ -131,13 +131,14 @@ export function InsightsPage() {
     return all.sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 8)
   }, [ethCategories, otcCategories])
 
-  // Auto-narrative
+  // Auto-narrative — commercial framing
   const heroNarrative = useMemo(() => {
     const dir = totalGrowth >= 0 ? 'grew' : 'contracted'
     const rxDir = ethGrowth >= 0 ? 'expanding' : 'declining'
     const otcDir = otcGrowth >= 0 ? 'recovering' : 'softening'
-    return `The Australian pharmacy industry ${dir} ${Math.abs(totalGrowth).toFixed(1)}% to ${formatCurrency(totalMarket)}, with prescription sales ${rxDir} at ${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% and OTC ${otcDir} at ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}%. This report synthesises ${formatCompact(state.eth.length + state.otc.length)} product-level data points into strategic themes shaping pharmacy in 2025.`
-  }, [totalGrowth, totalMarket, ethGrowth, otcGrowth, state.eth.length, state.otc.length])
+    const totalDelta = Math.abs(totalMarket - (ethTotalLY + otcTotalLY))
+    return `The Australian pharmacy industry ${dir} ${Math.abs(totalGrowth).toFixed(1)}% to ${formatCompactDollar(totalMarket)} (${totalGrowth >= 0 ? '+' : '-'}${formatCompactDollar(totalDelta)} net), with prescription sales ${rxDir} at ${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% (${formatCompactDollar(ethTotalTY)}) and OTC ${otcDir} at ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% (${formatCompactDollar(otcTotalTY)}). This intelligence platform synthesises ${formatCompact(state.eth.length + state.otc.length)} product-level records into commercially actionable insights for pharma executives, suppliers, and pharmacy groups.`
+  }, [totalGrowth, totalMarket, ethGrowth, ethTotalTY, ethTotalLY, otcGrowth, otcTotalTY, otcTotalLY, state.eth.length, state.otc.length])
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -185,9 +186,9 @@ export function InsightsPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="Total Market" value={formatCompact(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<BarChart3 className="w-4 h-4" />} />
-        <KPICard title="Dispense (Rx)" value={formatCompact(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
-        <KPICard title="OTC / FoS" value={formatCompact(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
+        <KPICard title="Total Market" value={formatCompactDollar(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<BarChart3 className="w-4 h-4" />} />
+        <KPICard title="Dispense (Rx)" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
+        <KPICard title="OTC / FoS" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Data Points" value={formatCompact(state.eth.length + state.otc.length)} icon={<Sparkles className="w-4 h-4" />} />
       </div>
 
@@ -288,7 +289,7 @@ export function InsightsPage() {
             <div key={c.category} className="flex items-center gap-2 py-1.5 border-b border-slate-50">
               <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${c.segment === 'Rx' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>{c.segment}</span>
               <span className="text-[10px] text-slate-600 flex-1 truncate">{c.category}</span>
-              <span className="text-[10px] font-semibold text-slate-500">{formatCompact(c.tyValue)}</span>
+              <span className="text-[10px] font-semibold text-slate-500">{formatCompactDollar(c.tyValue)}</span>
               <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
               <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
@@ -307,10 +308,10 @@ export function InsightsPage() {
         <p className="text-[10px] text-slate-500 mb-4">Strategic considerations derived from the data</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
-            { q: 'How will 60DD reshape supplier-pharmacy partnerships?', insight: 'Volume-to-value transition demands new commercial models' },
-            { q: 'Which OTC categories will recover — and which won\'t?', insight: 'Condition-specific outperforming general wellness' },
-            { q: 'Is specialty pharma the new growth engine?', insight: `Rx growth at +${ethGrowth.toFixed(1)}% driven by high-value biologics` },
-            { q: 'Can pharmacy defend share against online channels?', insight: 'Pharmacist-advised categories remain defensible' },
+            { q: 'How will 60DD reshape supplier-pharmacy commercial models?', insight: `${formatCompactDollar(ethTotalTY)} Rx market shifting from volume to value — trade terms need renegotiation` },
+            { q: 'Where should suppliers allocate trade spend in OTC?', insight: `${formatCompactDollar(otcTotalTY)} OTC market — condition-specific segments delivering superior ROI vs general wellness` },
+            { q: 'Is specialty pharma the $-growth engine for pharmacy?', insight: `Rx growth at +${ethGrowth.toFixed(1)}% driven by high-cost biologics — disproportionate value per script` },
+            { q: 'What is the commercial risk of channel leakage?', insight: `Online and grocery eroding pharmacy share in OTC — pharmacist-advised categories remain defensible moats` },
           ].map((item, i) => (
             <div key={i} className="bg-white/80 rounded-lg p-3 border border-slate-100">
               <p className="text-[11px] font-semibold text-slate-700 mb-1">{item.q}</p>

@@ -6,38 +6,39 @@ import {
 import { ShoppingBag, ChevronRight, X, Search, Factory, Package, TrendingUp, TrendingDown, Sparkles } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
-import { formatCompact, formatCurrency } from '../../lib/formatters'
+import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 import type { ManufacturerSummary } from '../../data/types'
 
 const COLORS = ['#0D9488', '#2563EB', '#7C3AED', '#D97706', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
 
-/** Auto-generate narrative for the OTC market */
+/** IQVIA-grade OTC market narrative — commercial framing, $ denominated */
 function generateOTCNarrative(
   totalTY: number, growth: number,
-  categories: { category: string; tyValue: number; valueGrowth: number; manufacturerCount: number }[],
+  categories: { category: string; tyValue: number; lyValue: number; valueGrowth: number; manufacturerCount: number; skuCount: number }[],
   totalUnits: number, mfrCount: number,
 ): string[] {
   const lines: string[] = []
 
   const dir = growth >= 0 ? 'grew' : 'softened'
-  lines.push(`The OTC/consumer health market ${dir} ${Math.abs(growth).toFixed(1)}% year-on-year to ${formatCurrency(totalTY)}, encompassing ${formatCompact(totalUnits)} units across ${categories.length} market segments and ${mfrCount} manufacturers.`)
+  lines.push(`The OTC/consumer health market ${dir} ${Math.abs(growth).toFixed(1)}% YoY to ${formatCompactDollar(totalTY)}, spanning ${formatCompact(totalUnits)} units across ${categories.length} market segments and ${mfrCount} suppliers.`)
 
-  const growers = [...categories].filter(c => c.valueGrowth > 3).sort((a, b) => b.valueGrowth - a.valueGrowth)
-  const decliners = [...categories].filter(c => c.valueGrowth < -3).sort((a, b) => a.valueGrowth - b.valueGrowth)
+  const growers = [...categories].filter(c => c.valueGrowth > 3 && c.lyValue > 50000).sort((a, b) => b.valueGrowth - a.valueGrowth)
+  const decliners = [...categories].filter(c => c.valueGrowth < -3 && c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth)
 
   if (growers.length > 0 && growers[0]) {
-    const top3 = growers.slice(0, 3).map(c => c.category).join(', ')
-    lines.push(`Growth pockets include ${top3}, with ${growers[0].category} leading at +${growers[0].valueGrowth.toFixed(1)}% — condition-specific categories continue to outperform general wellness.`)
+    const incremental = growers[0].tyValue - growers[0].lyValue
+    lines.push(`Opportunity: ${growers[0].category} added ${formatCompactDollar(incremental)} in incremental value (+${growers[0].valueGrowth.toFixed(1)}%). Suppliers should increase trade investment in pharmacy-exclusive SKUs and pharmacist-recommended positioning within this segment.`)
   }
 
   if (decliners.length > 0 && decliners[0]) {
-    lines.push(`The sharpest decline was in ${decliners[0].category} (${decliners[0].valueGrowth.toFixed(1)}%), reflecting post-pandemic normalisation and intensifying online competition.`)
+    const valueAtRisk = Math.abs(decliners[0].tyValue - decliners[0].lyValue)
+    lines.push(`Risk: ${decliners[0].category} eroded ${formatCompactDollar(valueAtRisk)} (${decliners[0].valueGrowth.toFixed(1)}%). Channel leakage to online and grocery is likely — recommend defensive promotional strategy, loyalty programs, and pharmacist recommendation incentives.`)
   }
 
   if (growth < 0) {
-    lines.push(`The overall market contraction signals a structural shift as pandemic-inflated categories normalise, while pharmacist-advised products and pharmacy-exclusive lines maintain stronger performance.`)
+    lines.push(`The overall contraction signals structural channel shift. Suppliers defending pharmacy-channel share should focus on pharmacist-advised categories where consultation creates switching barriers, and invest in condition-specific NPD over general wellness.`)
   } else {
-    lines.push(`The market's return to growth is underpinned by premiumisation, pharmacist-recommended brands, and consumer willingness to invest in proactive health management.`)
+    lines.push(`Growth is driven by premiumisation and pharmacist-recommended brands. Suppliers should leverage pharmacy's trust advantage by investing in behind-the-counter programmes, pharmacist education, and pharmacy-exclusive product lines.`)
   }
 
   return lines
@@ -115,9 +116,13 @@ export function OTCPage() {
     const topMfr = mfrBreakdown[0]
     if (!topMfr) return ''
     const growthDir = catInfo.valueGrowth >= 0 ? 'grew' : 'declined'
+    const incremental = Math.abs(catInfo.tyValue - catInfo.lyValue)
     const topSku = topSkus[0]
-    const skuNote = topSku ? ` The leading SKU is ${topSku.name} at ${formatCurrency(topSku.tyValue)}.` : ''
-    return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCurrency(catInfo.tyValue)}. ${topMfr.manufacturer} leads with ${topMfr.share.toFixed(1)}% share across ${catInfo.skuCount} total SKUs.${skuNote}`
+    const skuNote = topSku ? ` Top SKU: ${topSku.name} (${formatCompactDollar(topSku.tyValue)}).` : ''
+    const action = catInfo.valueGrowth >= 0
+      ? `${formatCompactDollar(incremental)} in incremental value creates opportunity for share gains through targeted promotional investment.`
+      : `${formatCompactDollar(incremental)} in value erosion — suppliers should assess channel dynamics, promotional ROI, and competitive positioning.`
+    return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCompactDollar(catInfo.tyValue)}. ${topMfr.manufacturer} holds ${topMfr.share.toFixed(1)}% share across ${catInfo.manufacturerCount} suppliers.${skuNote} ${action}`
   }, [selectedCat, mfrBreakdown, otcCategories, topSkus])
 
   return (
@@ -150,7 +155,7 @@ export function OTCPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="OTC Market" value={formatCompact(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
+        <KPICard title="OTC Market" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Total Units" value={formatCompact(totalUnits)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="Categories" value={`${otcCategories.length}`} icon={<TrendingUp className="w-4 h-4" />} />
@@ -218,7 +223,7 @@ export function OTCPage() {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
                   <div>
                     <span className="text-slate-400">TY Value</span>
-                    <p className="font-semibold text-slate-700">{formatCompact(cat.tyValue)}</p>
+                    <p className="font-semibold text-slate-700">{formatCompactDollar(cat.tyValue)}</p>
                   </div>
                   <div>
                     <span className="text-slate-400">Growth</span>

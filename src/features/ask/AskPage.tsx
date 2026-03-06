@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database, Lightbulb } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
-import { formatCompact, formatCurrency } from '../../lib/formatters'
+import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
 interface Message {
   role: 'user' | 'assistant' | 'system'
@@ -39,12 +39,13 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   const otcGrowing = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
   const otcDeclining = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 5)
 
-  return `You are SOTI AI, the intelligent assistant for the State of the Industry (SOTI) platform by NostraData. You provide data-driven insights about the Australian pharmacy market.
+  return `You are SOTI AI — the commercial intelligence engine for NostraData's State of the Industry platform. You think and communicate like a senior IQVIA market analyst. You provide commercially actionable insights that pharma executives, suppliers, and pharmacy groups would pay for.
 
 MARKET OVERVIEW:
-- Total Pharmacy Market: ${formatCurrency(totalMarket)}
-- Prescription (Rx/Dispense): ${formatCurrency(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)
-- OTC/Front of Shop: ${formatCurrency(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)
+- Total Pharmacy Market: ${formatCompactDollar(totalMarket)}
+- Prescription (Rx/Dispense): ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)
+- OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)
+- Rx:OTC Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
 - Total Rx Records: ${formatCompact(state.eth.length)}
 - Total OTC Records: ${formatCompact(state.otc.length)}
 - Rx Categories: ${ethCategories.length}
@@ -56,25 +57,29 @@ ${topRx}
 TOP 10 OTC CATEGORIES (by value):
 ${topOtc}
 
-FASTEST GROWING RX:
-${rxGrowing.map(c => `${c.category}: +${c.valueGrowth.toFixed(1)}%`).join(', ')}
+FASTEST GROWING RX (opportunity):
+${rxGrowing.map(c => `${c.category}: +${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
-DECLINING RX:
-${rxDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}%`).join(', ')}
+DECLINING RX (value at risk):
+${rxDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
-FASTEST GROWING OTC:
-${otcGrowing.map(c => `${c.category}: +${c.valueGrowth.toFixed(1)}%`).join(', ')}
+FASTEST GROWING OTC (opportunity):
+${otcGrowing.map(c => `${c.category}: +${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
-DECLINING OTC:
-${otcDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}%`).join(', ')}
+DECLINING OTC (value at risk):
+${otcDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
 INSTRUCTIONS:
-- Answer questions about the Australian pharmacy market using the data above
-- Be concise but insightful — think like a senior market analyst
-- Use specific numbers and percentages from the data
-- If you don't have specific data to answer, say so honestly
-- Format responses with clear structure (use bullet points when listing items)
-- Always ground insights in the actual data provided`
+- All currency values MUST use $ (e.g., $20.4M, $1.2B, $450K) — never use AUD or A$
+- Think like a senior IQVIA market analyst — frame everything commercially
+- Size opportunities in dollar terms ("this represents a $X opportunity")
+- Quantify risks ("$X in value at risk from channel leakage")
+- Provide actionable recommendations (e.g., "suppliers should increase trade investment", "recommend SKU rationalisation")
+- Reference specific data points — numbers, percentages, category names
+- Use competitive intelligence language — market share, portfolio optimisation, channel dynamics
+- If you don't have data, say so honestly — never fabricate figures
+- Format with clear structure (bullets, bold for key figures)
+- Position insights as commercially valuable — this is intelligence worth paying for`
 }
 
 /** Call Anthropic API directly */
@@ -119,44 +124,51 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
 
   if (q.includes('total') && q.includes('market')) {
-    return `The total Australian pharmacy market is valued at ${formatCurrency(ethTotalTY + otcTotalTY)}, comprising ${formatCurrency(ethTotalTY)} in Prescription/Dispense (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY) and ${formatCurrency(otcTotalTY)} in OTC/Front of Shop (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY).`
+    const totalDelta = Math.abs((ethTotalTY + otcTotalTY) - (ethTotalTY / (1 + ethGrowth / 100) + otcTotalTY / (1 + otcGrowth / 100)))
+    return `Total pharmacy market: ${formatCompactDollar(ethTotalTY + otcTotalTY)}\n\n- Rx/Dispense: ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)\n- OTC/FoS: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)\n\nNet value ${ethGrowth + otcGrowth >= 0 ? 'gain' : 'shift'}: ${formatCompactDollar(totalDelta)}. The Rx:OTC split stands at ${((ethTotalTY / (ethTotalTY + otcTotalTY)) * 100).toFixed(0)}:${((otcTotalTY / (ethTotalTY + otcTotalTY)) * 100).toFixed(0)}.`
   }
 
-  if (q.includes('growing') || q.includes('growth') || q.includes('fastest')) {
+  if (q.includes('growing') || q.includes('growth') || q.includes('fastest') || q.includes('opportunity')) {
     const isOtc = q.includes('otc')
     const cats = isOtc ? otcCategories : ethCategories
     const minVal = isOtc ? 50000 : 10000
     const top = [...cats].filter(c => c.lyValue > minVal).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
     const segment = isOtc ? 'OTC' : 'Rx'
-    return `Top growing ${segment} categories:\n${top.map((c, i) => `${i + 1}. ${c.category} — +${c.valueGrowth.toFixed(1)}% (${formatCurrency(c.tyValue)})`).join('\n')}`
+    return `Top ${segment} growth opportunities:\n${top.map((c, i) => {
+      const inc = c.tyValue - c.lyValue
+      return `${i + 1}. ${c.category} — +${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)}, +${formatCompactDollar(inc)} incremental)`
+    }).join('\n')}\n\nRecommendation: Suppliers with portfolio exposure to these categories should consider increasing trade investment and sales force allocation.`
   }
 
-  if (q.includes('declining') || q.includes('decline') || q.includes('worst') || q.includes('under pressure')) {
+  if (q.includes('declining') || q.includes('decline') || q.includes('worst') || q.includes('risk') || q.includes('under pressure')) {
     const isOtc = q.includes('otc')
     const cats = isOtc ? otcCategories : ethCategories
     const minVal = isOtc ? 50000 : 10000
     const bottom = [...cats].filter(c => c.lyValue > minVal).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 5)
     const segment = isOtc ? 'OTC' : 'Rx'
-    return `Most declining ${segment} categories:\n${bottom.map((c, i) => `${i + 1}. ${c.category} — ${c.valueGrowth.toFixed(1)}% (${formatCurrency(c.tyValue)})`).join('\n')}`
+    return `${segment} categories with value at risk:\n${bottom.map((c, i) => {
+      const eroded = Math.abs(c.tyValue - c.lyValue)
+      return `${i + 1}. ${c.category} — ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)}, -${formatCompactDollar(eroded)} erosion)`
+    }).join('\n')}\n\nRecommendation: Assess channel leakage, promotional ROI, and consider portfolio rationalisation in declining segments.`
   }
 
   if (q.includes('manufacturer') || q.includes('supplier')) {
     const mfrs = new Set(data.state.eth.map(r => r.manufacturer))
     const otcMfrs = new Set(data.state.otc.map(r => r.manufacturer))
-    return `There are ${mfrs.size} manufacturers in the Rx market and ${otcMfrs.size} in the OTC market. For detailed manufacturer breakdowns, visit the Dispense or OTC pages and click into a category.`
+    return `Supplier landscape:\n- Rx: ${mfrs.size} manufacturers competing across ${ethCategories.length} categories (${formatCompactDollar(ethTotalTY)})\n- OTC: ${otcMfrs.size} suppliers across ${otcCategories.length} segments (${formatCompactDollar(otcTotalTY)})\n\nFor detailed supplier share and competitive positioning, drill into specific categories on the Dispense or OTC pages.`
   }
 
   if (q.includes('otc') && (q.includes('perform') || q.includes('how'))) {
-    return `The OTC market is valued at ${formatCurrency(otcTotalTY)} with ${otcGrowth >= 0 ? 'growth' : 'contraction'} of ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY. There are ${otcCategories.length} categories tracked across ${new Set(data.state.otc.map(r => r.manufacturer)).size} manufacturers.`
+    return `OTC market performance: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)\n\n- ${otcCategories.length} categories tracked\n- ${new Set(data.state.otc.map(r => r.manufacturer)).size} suppliers\n- ${otcGrowth < 0 ? 'Market contraction driven by post-pandemic normalisation and online channel leakage' : 'Growth driven by premiumisation and pharmacist-recommended positioning'}\n\nStrategic take: ${otcGrowth < 0 ? 'Suppliers should reallocate trade spend toward condition-specific segments where pharmacy maintains pricing power.' : 'Invest in pharmacy-exclusive formulations and behind-the-counter programs to defend premium positioning.'}`
   }
 
   if (q.includes('average') && q.includes('growth')) {
     const avgRx = ethCategories.length ? ethCategories.reduce((s, c) => s + c.valueGrowth, 0) / ethCategories.length : 0
     const avgOtc = otcCategories.length ? otcCategories.reduce((s, c) => s + c.valueGrowth, 0) / otcCategories.length : 0
-    return `Average category growth rates:\n- Rx: ${avgRx >= 0 ? '+' : ''}${avgRx.toFixed(1)}% across ${ethCategories.length} categories\n- OTC: ${avgOtc >= 0 ? '+' : ''}${avgOtc.toFixed(1)}% across ${otcCategories.length} categories`
+    return `Average category growth rates:\n- Rx: ${avgRx >= 0 ? '+' : ''}${avgRx.toFixed(1)}% across ${ethCategories.length} categories (${formatCompactDollar(ethTotalTY)} total)\n- OTC: ${avgOtc >= 0 ? '+' : ''}${avgOtc.toFixed(1)}% across ${otcCategories.length} categories (${formatCompactDollar(otcTotalTY)} total)\n\nCategories growing above average represent disproportionate investment opportunities for suppliers.`
   }
 
-  return `I can answer questions about the Australian pharmacy market using SOTI's ${formatCompact(data.state.eth.length + data.state.otc.length)} data points. Try asking about:\n- Market totals and growth\n- Top/bottom performing categories\n- Rx vs OTC comparisons\n- Manufacturer counts\n\nFor AI-powered answers, add your Anthropic API key to .env.local:\nVITE_ANTHROPIC_API_KEY=sk-ant-...`
+  return `SOTI Market Intelligence — ${formatCompact(data.state.eth.length + data.state.otc.length)} product records analysed.\n\nTry asking:\n- "What is the total pharmacy market value?"\n- "What are the fastest growing Rx categories?"\n- "Which OTC categories have value at risk?"\n- "How many suppliers compete in the market?"\n\nFor Claude-powered intelligence, add your API key to .env.local:\nVITE_ANTHROPIC_API_KEY=sk-ant-...`
 }
 
 export function AskPage() {

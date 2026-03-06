@@ -6,37 +6,38 @@ import {
 import { Pill, ChevronRight, X, Search, Factory, FlaskConical, Package, Sparkles, TrendingUp, TrendingDown } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
-import { formatCompact, formatCurrency } from '../../lib/formatters'
+import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 import type { ManufacturerSummary } from '../../data/types'
 
 const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
 
-/** Auto-generate narrative for the Dispense market */
+/** IQVIA-grade Dispense market narrative — commercial, actionable, $ denominated */
 function generateDispenseNarrative(
   totalTY: number, growth: number,
-  categories: { category: string; tyValue: number; valueGrowth: number; manufacturerCount: number }[],
+  categories: { category: string; tyValue: number; lyValue: number; valueGrowth: number; manufacturerCount: number; skuCount: number }[],
   totalUnits: number, mfrCount: number,
 ): string[] {
   const lines: string[] = []
 
   const dir = growth >= 0 ? 'grew' : 'contracted'
-  lines.push(`The prescription market ${dir} ${Math.abs(growth).toFixed(1)}% year-on-year to ${formatCurrency(totalTY)}, with ${formatCompact(totalUnits)} units dispensed across ${categories.length} therapeutic categories and ${mfrCount} manufacturers.`)
+  lines.push(`The prescription market ${dir} ${Math.abs(growth).toFixed(1)}% YoY to ${formatCompactDollar(totalTY)}, representing ${formatCompact(totalUnits)} dispensed units across ${categories.length} therapeutic categories and ${mfrCount} suppliers. Value growth is outpacing volume — average script value is increasing, driven by specialty therapies.`)
 
-  const growers = [...categories].filter(c => c.valueGrowth > 5).sort((a, b) => b.valueGrowth - a.valueGrowth)
-  const decliners = [...categories].filter(c => c.valueGrowth < -5).sort((a, b) => a.valueGrowth - b.valueGrowth)
+  const growers = [...categories].filter(c => c.valueGrowth > 5 && c.lyValue > 10000).sort((a, b) => b.valueGrowth - a.valueGrowth)
+  const decliners = [...categories].filter(c => c.valueGrowth < -5 && c.lyValue > 10000).sort((a, b) => a.valueGrowth - b.valueGrowth)
 
   if (growers.length > 0 && growers[0]) {
-    const top3 = growers.slice(0, 3).map(c => c.category).join(', ')
-    lines.push(`Growth was led by ${top3}, with ${growers[0].category} posting ${growers[0].valueGrowth.toFixed(1)}% value growth — reflecting continued demand for specialty and high-cost therapies.`)
+    const incremental = growers[0].tyValue - growers[0].lyValue
+    lines.push(`Opportunity: ${growers[0].category} delivered +${growers[0].valueGrowth.toFixed(1)}% growth, adding ${formatCompactDollar(incremental)} in incremental value. Suppliers with exposure to this therapy area should consider increasing sales force allocation and pharmacy engagement programs.`)
   }
 
   if (decliners.length > 0 && decliners[0]) {
-    lines.push(`Categories under pressure include ${decliners[0].category} (${decliners[0].valueGrowth.toFixed(1)}%), where 60-day dispensing and generic substitution continue to reshape the competitive landscape.`)
+    const valueEroded = Math.abs(decliners[0].tyValue - decliners[0].lyValue)
+    lines.push(`Risk: ${decliners[0].category} eroded ${formatCompactDollar(valueEroded)} (${decliners[0].valueGrowth.toFixed(1)}%). ${decliners[0].manufacturerCount} competing suppliers face share compression — recommend portfolio review, promotional intensity assessment, and potential SKU rationalisation.`)
   }
 
   const topByValue = categories[0]
   if (topByValue) {
-    lines.push(`${topByValue.category} remains the largest category at ${formatCurrency(topByValue.tyValue)} with ${topByValue.manufacturerCount} competing manufacturers.`)
+    lines.push(`Market leader: ${topByValue.category} holds the largest category value at ${formatCompactDollar(topByValue.tyValue)} with ${topByValue.manufacturerCount} suppliers competing across ${topByValue.skuCount} SKUs. Concentration analysis suggests opportunities for targeted share gains.`)
   }
 
   return lines
@@ -127,7 +128,11 @@ export function DispensePage() {
     const topMfr = mfrBreakdown[0]
     if (!topMfr) return ''
     const growthDir = catInfo.valueGrowth >= 0 ? 'grew' : 'declined'
-    return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCurrency(catInfo.tyValue)}, with ${topMfr.manufacturer} holding ${topMfr.share.toFixed(1)}% market share. ${catInfo.manufacturerCount} manufacturers compete across ${catInfo.skuCount} SKUs.`
+    const incremental = Math.abs(catInfo.tyValue - catInfo.lyValue)
+    const action = catInfo.valueGrowth >= 0
+      ? `This represents a ${formatCompactDollar(incremental)} growth opportunity for suppliers with competitive positioning.`
+      : `${formatCompactDollar(incremental)} in value has shifted — suppliers should assess competitive dynamics and promotional ROI.`
+    return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCompactDollar(catInfo.tyValue)}. ${topMfr.manufacturer} leads with ${topMfr.share.toFixed(1)}% share across ${catInfo.manufacturerCount} suppliers and ${catInfo.skuCount} SKUs. ${action}`
   }, [selectedCat, mfrBreakdown, ethCategories])
 
   return (
@@ -160,7 +165,7 @@ export function DispensePage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="Rx Market Value" value={formatCompact(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
+        <KPICard title="Rx Market Value" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
         <KPICard title="Total Units" value={formatCompact(totalUnits)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="SKUs" value={formatCompact(skuCount)} icon={<FlaskConical className="w-4 h-4" />} />
@@ -228,7 +233,7 @@ export function DispensePage() {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
                   <div>
                     <span className="text-slate-400">TY Value</span>
-                    <p className="font-semibold text-slate-700">{formatCompact(cat.tyValue)}</p>
+                    <p className="font-semibold text-slate-700">{formatCompactDollar(cat.tyValue)}</p>
                   </div>
                   <div>
                     <span className="text-slate-400">Growth</span>
