@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { useLocation } from 'react-router-dom'
-import { ShoppingBag, ChevronRight, ChevronDown, X, Search, Factory, Package, TrendingUp, TrendingDown, Sparkles } from 'lucide-react'
+import { ShoppingBag, ChevronRight, ChevronDown, X, Search, Factory, Package, TrendingUp, TrendingDown, Sparkles, BarChart3, Award, AlertTriangle } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
@@ -51,6 +51,7 @@ export function OTCPage() {
   const [search, setSearch] = useState('')
   const [selectedMfr, setSelectedMfr] = useState<string | null>(null)
   const [narrativeOpen, setNarrativeOpen] = useState(false)
+  const [skuTab, setSkuTab] = useState<'value' | 'growing' | 'declining'>('value')
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
 
@@ -144,6 +145,37 @@ export function OTCPage() {
     return `${selectedCat} ${growthDir} ${Math.abs(catInfo.valueGrowth).toFixed(1)}% to ${formatCompactDollar(catInfo.tyValue)}. ${topMfr.manufacturer} holds ${topMfr.share.toFixed(1)}% share across ${catInfo.manufacturerCount} suppliers.${skuNote} ${action}`
   }, [selectedCat, mfrBreakdown, otcCategories, topSkus])
 
+  // ── Market-wide SKU Intelligence ──
+  const skuInsights = useMemo(() => {
+    const all = state.otc.map(r => ({
+      sku: r.packName,
+      category: r.market,
+      manufacturer: r.manufacturer,
+      tyValue: r.tyValue,
+      lyValue: r.lyValue,
+      tyUnits: r.tyUnits,
+      lyUnits: r.lyUnits,
+      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      absChange: r.tyValue - r.lyValue,
+    }))
+    const byValue = [...all].sort((a, b) => b.tyValue - a.tyValue)
+    const growing = [...all].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
+    const declining = [...all].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+    // Pareto: how many SKUs account for 80% of value
+    const totalTY = byValue.reduce((s, r) => s + r.tyValue, 0)
+    let cum = 0, p80 = 0
+    for (const s of byValue) { cum += s.tyValue; p80++; if (cum >= totalTY * 0.8) break }
+    return {
+      total: all.length,
+      byValue: byValue.slice(0, 15),
+      growing,
+      declining,
+      pareto80: { count: p80, pct: all.length ? (p80 / all.length) * 100 : 0 },
+    }
+  }, [state.otc])
+
+  const activeOtcSkuList = skuTab === 'value' ? skuInsights.byValue : skuTab === 'growing' ? skuInsights.growing : skuInsights.declining
+
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
       <div>
@@ -212,6 +244,91 @@ export function OTCPage() {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ── SKU Intelligence ── */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '300ms' }}>
+        <div className="px-4 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/40">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-teal-600" />
+              <h3 className="text-xs font-bold text-slate-800">SKU Intelligence</h3>
+              <span className="text-[8px] bg-teal-100 text-teal-700 font-semibold px-1.5 py-0.5 rounded">{formatCompact(skuInsights.total)} SKUs</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] text-slate-400">Pareto:</span>
+              <span className="text-[9px] font-bold text-teal-600">{skuInsights.pareto80.count} SKUs = 80% value</span>
+              <span className="text-[8px] text-slate-400">({skuInsights.pareto80.pct.toFixed(1)}% of portfolio)</span>
+            </div>
+          </div>
+        </div>
+        {/* Tab buttons */}
+        <div className="flex border-b border-slate-100">
+          {([
+            { key: 'value' as const, label: 'Highest Value', icon: <Award className="w-3 h-3" /> },
+            { key: 'growing' as const, label: 'Fastest Growing', icon: <TrendingUp className="w-3 h-3" /> },
+            { key: 'declining' as const, label: 'At Risk', icon: <AlertTriangle className="w-3 h-3" /> },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setSkuTab(tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-semibold transition-colors ${
+                skuTab === tab.key
+                  ? 'text-teal-700 border-b-2 border-teal-600 bg-teal-50/40'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* SKU table */}
+        <div className="p-4 sm:p-5 overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left py-1.5 text-slate-500 font-medium w-6">#</th>
+                <th className="text-left py-1.5 text-slate-500 font-medium">Product</th>
+                <th className="text-left py-1.5 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
+                <th className="text-left py-1.5 text-slate-500 font-medium w-24 hidden lg:table-cell">Category</th>
+                <th className="text-right py-1.5 text-slate-500 font-medium w-18">TY Value</th>
+                <th className="text-right py-1.5 text-slate-500 font-medium w-18 hidden sm:table-cell">LY Value</th>
+                <th className="text-right py-1.5 text-slate-500 font-medium w-16">Growth</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeOtcSkuList.map((s, i) => (
+                <tr key={s.sku + i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <td className="py-1.5 text-slate-400 font-bold">{i + 1}</td>
+                  <td className="py-1.5 text-slate-700 truncate max-w-[200px] font-medium">{s.sku}</td>
+                  <td className="py-1.5 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
+                  <td className="py-1.5 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
+                  <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
+                  <td className="text-right py-1.5 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
+                  <td className={`text-right py-1.5 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {s.growth >= 900 ? 'New' : `${s.growth >= 0 ? '+' : ''}${s.growth.toFixed(0)}%`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {skuTab === 'declining' && activeOtcSkuList.length > 0 && (
+            <div className="mt-3 flex items-start gap-2 bg-red-50/60 rounded-lg p-2.5">
+              <AlertTriangle className="w-3 h-3 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-[9px] text-red-600/80 leading-relaxed">
+                These products are losing the most absolute value YoY. Investigate channel leakage, promotional fatigue, and competitive displacement. Consider pharmacy-exclusive promotions to defend share.
+              </p>
+            </div>
+          )}
+          {skuTab === 'growing' && activeOtcSkuList.length > 0 && (
+            <div className="mt-3 flex items-start gap-2 bg-emerald-50/60 rounded-lg p-2.5">
+              <TrendingUp className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+              <p className="text-[9px] text-emerald-700/80 leading-relaxed">
+                High-growth products signal emerging consumer demand. Prioritise distribution expansion, pharmacist recommendation programs, and shelf-space optimisation to capture momentum.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
