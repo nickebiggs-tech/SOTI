@@ -7,7 +7,7 @@ import {
 import {
   Pill, ShoppingBag, ArrowRight, ChevronDown,
   DollarSign, Package, Factory, FlaskConical, Sparkles, Target, AlertTriangle,
-  BarChart3,
+  BarChart3, TrendingUp, Flame, ShieldAlert, Eye,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
@@ -100,6 +100,8 @@ export function DashboardPage() {
   const otcDecliners = useMemo(() => otcCategories.filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 4), [otcCategories])
 
   const [dashSkuTab, setDashSkuTab] = useState<'rx' | 'otc'>('rx')
+  const [rxWatchCat, setRxWatchCat] = useState<string | null>(null)
+  const [otcWatchCat, setOtcWatchCat] = useState<string | null>(null)
 
   // Top SKUs (Rx) aggregated
   const topRxSkus = useMemo(() => {
@@ -128,6 +130,114 @@ export function DashboardPage() {
   }, [state.otc])
 
   const activeSkuList = dashSkuTab === 'rx' ? topRxSkus : topOtcItems
+
+  // ── Rx Watch: category-level growth/decline with product drill-down ──
+  const rxWatchData = useMemo(() => {
+    // Per-SKU aggregation across all categories
+    const skuMap: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
+    state.eth.forEach(r => {
+      if (!skuMap[r.sku]) skuMap[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
+      const s = skuMap[r.sku]!
+      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
+    })
+    const allSkus = Object.entries(skuMap).map(([sku, s]) => ({
+      sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
+      tyValue: s.tyV, lyValue: s.lyV,
+      absChange: s.tyV - s.lyV,
+      growth: s.lyV > 0 ? ((s.tyV - s.lyV) / s.lyV) * 100 : (s.tyV > 0 ? 999 : 0),
+    }))
+
+    // Categories with their top rising & declining products
+    const catMap: Record<string, typeof allSkus> = {}
+    allSkus.forEach(s => {
+      if (!catMap[s.category]) catMap[s.category] = []
+      catMap[s.category]!.push(s)
+    })
+
+    const categories = ethCategories.map(c => {
+      const skus = catMap[c.category] || []
+      const rising = [...skus].filter(s => s.absChange > 0 && s.lyValue > 1000).sort((a, b) => b.absChange - a.absChange).slice(0, 5)
+      const declining = [...skus].filter(s => s.absChange < 0 && s.lyValue > 1000).sort((a, b) => a.absChange - b.absChange).slice(0, 5)
+      const newProducts = [...skus].filter(s => s.growth >= 900 && s.tyValue > 5000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 3)
+      return { ...c, rising, declining, newProducts }
+    })
+
+    // Overall top risers and decliners (min base value for significance)
+    const topRisers = [...allSkus].filter(s => s.absChange > 0 && s.lyValue > 5000).sort((a, b) => b.absChange - a.absChange).slice(0, 8)
+    const topDecliners = [...allSkus].filter(s => s.absChange < 0 && s.lyValue > 5000).sort((a, b) => a.absChange - b.absChange).slice(0, 8)
+    const newEntrants = [...allSkus].filter(s => s.growth >= 900 && s.tyValue > 10000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 5)
+
+    return { categories, topRisers, topDecliners, newEntrants }
+  }, [state.eth, ethCategories])
+
+  // Selected Rx Watch category details
+  const rxWatchCatDetail = useMemo(() => {
+    if (!rxWatchCat) return null
+    return rxWatchData.categories.find(c => c.category === rxWatchCat) || null
+  }, [rxWatchCat, rxWatchData])
+
+  // ── OTC Watch: same pattern for OTC ──
+  const otcWatchData = useMemo(() => {
+    const allItems = state.otc.map(r => ({
+      sku: r.packName, category: r.market, manufacturer: r.manufacturer, molecule: '',
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      absChange: r.tyValue - r.lyValue,
+      growth: r.lyValue > 0 ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : (r.tyValue > 0 ? 999 : 0),
+    }))
+
+    const catMap: Record<string, typeof allItems> = {}
+    allItems.forEach(s => {
+      if (!catMap[s.category]) catMap[s.category] = []
+      catMap[s.category]!.push(s)
+    })
+
+    const categories = otcCategories.map(c => {
+      const skus = catMap[c.category] || []
+      const rising = [...skus].filter(s => s.absChange > 0 && s.lyValue > 500).sort((a, b) => b.absChange - a.absChange).slice(0, 5)
+      const declining = [...skus].filter(s => s.absChange < 0 && s.lyValue > 500).sort((a, b) => a.absChange - b.absChange).slice(0, 5)
+      const newProducts = [...skus].filter(s => s.growth >= 900 && s.tyValue > 2000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 3)
+      return { ...c, rising, declining, newProducts }
+    })
+
+    const topRisers = [...allItems].filter(s => s.absChange > 0 && s.lyValue > 2000).sort((a, b) => b.absChange - a.absChange).slice(0, 8)
+    const topDecliners = [...allItems].filter(s => s.absChange < 0 && s.lyValue > 2000).sort((a, b) => a.absChange - b.absChange).slice(0, 8)
+    const newEntrants = [...allItems].filter(s => s.growth >= 900 && s.tyValue > 5000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 5)
+
+    return { categories, topRisers, topDecliners, newEntrants }
+  }, [state.otc, otcCategories])
+
+  const otcWatchCatDetail = useMemo(() => {
+    if (!otcWatchCat) return null
+    return otcWatchData.categories.find(c => c.category === otcWatchCat) || null
+  }, [otcWatchCat, otcWatchData])
+
+  // Auto-narrative generators for Watch sections
+  const rxWatchNarrative = useMemo(() => {
+    const r = rxWatchData
+    const lines: string[] = []
+    if (r.topRisers[0]) {
+      lines.push(`Fastest-growing Rx product by absolute value: ${r.topRisers[0].sku} (${r.topRisers[0].manufacturer}) adding ${formatCompactDollar(r.topRisers[0].absChange)} in ${r.topRisers[0].category}. ${r.topRisers.length > 1 ? `Followed by ${r.topRisers[1]?.sku} (+${formatCompactDollar(r.topRisers[1]?.absChange ?? 0)}).` : ''}`)
+    }
+    if (r.topDecliners[0]) {
+      lines.push(`Biggest Rx value erosion: ${r.topDecliners[0].sku} lost ${formatCompactDollar(Math.abs(r.topDecliners[0].absChange))} — likely driven by generic entry, 60-day dispensing, or competitive displacement. ${r.topDecliners.slice(0, 3).length > 1 ? `Top 3 decliners combined represent ${formatCompactDollar(Math.abs(r.topDecliners.slice(0, 3).reduce((s, d) => s + d.absChange, 0)))} in value at risk.` : ''}`)
+    }
+    if (r.newEntrants.length > 0) {
+      lines.push(`${r.newEntrants.length} new product${r.newEntrants.length > 1 ? 's' : ''} entered the market with material value: ${r.newEntrants.map(n => `${n.sku} (${formatCompactDollar(n.tyValue)})`).join(', ')}. Early-stage monitoring recommended.`)
+    }
+    return lines
+  }, [rxWatchData])
+
+  const otcWatchNarrative = useMemo(() => {
+    const r = otcWatchData
+    const lines: string[] = []
+    if (r.topRisers[0]) {
+      lines.push(`OTC momentum leader: ${r.topRisers[0].sku} (${r.topRisers[0].manufacturer}) gained ${formatCompactDollar(r.topRisers[0].absChange)} in ${r.topRisers[0].category}. Consumer demand signals suggest sustained growth in condition-specific categories.`)
+    }
+    if (r.topDecliners[0]) {
+      lines.push(`Largest OTC value decline: ${r.topDecliners[0].sku} shed ${formatCompactDollar(Math.abs(r.topDecliners[0].absChange))}. Channel leakage to online and grocery remains the primary threat — defensive promotional strategy advised.`)
+    }
+    return lines
+  }, [otcWatchData])
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -417,6 +527,331 @@ export function DashboardPage() {
             </tbody>
           </table>
           <p className="mt-2 text-[8px] text-violet-400 italic">Tap any row to drill into its category</p>
+        </div>
+      </div>
+
+      {/* ── Rx Watch ── */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+        <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Eye className="w-4 h-4 text-blue-600 shrink-0" />
+            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Rx Watch</h3>
+            <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Prescription Movers</span>
+          </div>
+          <p className="text-[9px] text-slate-500 mt-1">Products driving significant value change — rising stars and declining products</p>
+        </div>
+
+        {/* Auto-narrative */}
+        {rxWatchNarrative.length > 0 && (
+          <div className="px-3 sm:px-5 py-2.5 bg-gradient-to-r from-blue-50/30 to-indigo-50/20 border-b border-slate-100">
+            <div className="flex items-start gap-2">
+              <Sparkles className="w-3 h-3 text-blue-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                {rxWatchNarrative.map((line, i) => (
+                  <p key={i} className="text-[10px] text-slate-600 leading-relaxed">{line}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="p-3 sm:p-5">
+          {/* Rising / Declining split */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {/* Rising */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Flame className="w-3.5 h-3.5 text-emerald-500" />
+                <h4 className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Rising Stars</h4>
+              </div>
+              <div className="space-y-1">
+                {rxWatchData.topRisers.map((s, i) => (
+                  <button key={s.sku + i} onClick={() => navigate('/dispense', { state: { selectedCategory: s.category } })} className="w-full flex items-center gap-1.5 text-left hover:bg-emerald-50 rounded p-1.5 -mx-1 transition-colors group">
+                    <span className="text-[9px] font-bold text-emerald-400 w-4">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] sm:text-[10px] text-slate-700 truncate group-hover:text-emerald-700 font-medium">{s.sku}</p>
+                      <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</p>
+                      <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Declining */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
+                <h4 className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Value at Risk</h4>
+              </div>
+              <div className="space-y-1">
+                {rxWatchData.topDecliners.map((s, i) => (
+                  <button key={s.sku + i} onClick={() => navigate('/dispense', { state: { selectedCategory: s.category } })} className="w-full flex items-center gap-1.5 text-left hover:bg-red-50 rounded p-1.5 -mx-1 transition-colors group">
+                    <span className="text-[9px] font-bold text-red-400 w-4">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] sm:text-[10px] text-slate-700 truncate group-hover:text-red-700 font-medium">{s.sku}</p>
+                      <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</p>
+                      <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* New entrants */}
+          {rxWatchData.newEntrants.length > 0 && (
+            <div className="mb-4 p-2.5 bg-blue-50/50 rounded-lg">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <TrendingUp className="w-3 h-3 text-blue-600" />
+                <h4 className="text-[9px] font-bold text-blue-700 uppercase tracking-wide">New Entrants</h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {rxWatchData.newEntrants.map(n => (
+                  <button key={n.sku} onClick={() => navigate('/dispense', { state: { selectedCategory: n.category } })} className="bg-white rounded-lg border border-blue-100 px-2.5 py-1.5 hover:border-blue-300 transition-colors text-left">
+                    <p className="text-[9px] font-medium text-slate-700 truncate max-w-[180px]">{n.sku}</p>
+                    <p className="text-[8px] text-blue-600 font-bold">{formatCompactDollar(n.tyValue)} <span className="text-slate-400 font-normal">· {n.category}</span></p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category drill-down selector */}
+          <div className="border-t border-slate-100 pt-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Target className="w-3 h-3 text-blue-600" />
+              <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Drill by Category</h4>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {rxWatchData.categories.filter(c => c.lyValue > 10000).sort((a, b) => Math.abs(b.tyValue - b.lyValue) - Math.abs(a.tyValue - a.lyValue)).slice(0, 12).map(c => (
+                <button
+                  key={c.category}
+                  onClick={() => setRxWatchCat(rxWatchCat === c.category ? null : c.category)}
+                  className={`text-[8px] sm:text-[9px] px-2 py-1 rounded-lg border transition-colors ${
+                    rxWatchCat === c.category
+                      ? 'bg-blue-100 border-blue-300 text-blue-700 font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50'
+                  }`}
+                >
+                  {c.category.length > 20 ? c.category.slice(0, 18) + '...' : c.category}
+                  <span className={`ml-1 font-bold ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(0)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Selected category detail */}
+            {rxWatchCatDetail && (
+              <div className="bg-slate-50 rounded-lg p-3 animate-fade-in-up">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h5 className="text-[11px] font-bold text-slate-800">{rxWatchCatDetail.category}</h5>
+                    <p className="text-[9px] text-slate-500">
+                      {formatCompactDollar(rxWatchCatDetail.tyValue)} · {rxWatchCatDetail.valueGrowth >= 0 ? '+' : ''}{rxWatchCatDetail.valueGrowth.toFixed(1)}% · {rxWatchCatDetail.manufacturerCount} suppliers
+                    </p>
+                  </div>
+                  <button onClick={() => navigate('/dispense', { state: { selectedCategory: rxWatchCatDetail.category } })} className="text-[8px] text-blue-600 font-semibold flex items-center gap-0.5 hover:underline">
+                    Full analysis <ArrowRight className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {rxWatchCatDetail.rising.length > 0 && (
+                    <div>
+                      <p className="text-[8px] font-semibold text-emerald-600 uppercase tracking-wider mb-1">Rising in {rxWatchCatDetail.category}</p>
+                      {rxWatchCatDetail.rising.map(s => (
+                        <div key={s.sku} className="flex items-center gap-1.5 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {rxWatchCatDetail.declining.length > 0 && (
+                    <div>
+                      <p className="text-[8px] font-semibold text-red-500 uppercase tracking-wider mb-1">Declining in {rxWatchCatDetail.category}</p>
+                      {rxWatchCatDetail.declining.map(s => (
+                        <div key={s.sku} className="flex items-center gap-1.5 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                          <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
+                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── OTC Watch ── */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '700ms' }}>
+        <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/40">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Eye className="w-4 h-4 text-teal-600 shrink-0" />
+            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">OTC Watch</h3>
+            <span className="text-[7px] sm:text-[8px] bg-teal-100 text-teal-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Consumer Health Movers</span>
+          </div>
+          <p className="text-[9px] text-slate-500 mt-1">Products driving significant value change in OTC / front of shop</p>
+        </div>
+
+        {/* Auto-narrative */}
+        {otcWatchNarrative.length > 0 && (
+          <div className="px-3 sm:px-5 py-2.5 bg-gradient-to-r from-teal-50/30 to-emerald-50/20 border-b border-slate-100">
+            <div className="flex items-start gap-2">
+              <Sparkles className="w-3 h-3 text-teal-500 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                {otcWatchNarrative.map((line, i) => (
+                  <p key={i} className="text-[10px] text-slate-600 leading-relaxed">{line}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="p-3 sm:p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {/* Rising */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Flame className="w-3.5 h-3.5 text-emerald-500" />
+                <h4 className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">Rising Stars</h4>
+              </div>
+              <div className="space-y-1">
+                {otcWatchData.topRisers.map((s, i) => (
+                  <button key={s.sku + i} onClick={() => navigate('/otc', { state: { selectedCategory: s.category } })} className="w-full flex items-center gap-1.5 text-left hover:bg-emerald-50 rounded p-1.5 -mx-1 transition-colors group">
+                    <span className="text-[9px] font-bold text-emerald-400 w-4">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] sm:text-[10px] text-slate-700 truncate group-hover:text-emerald-700 font-medium">{s.sku}</p>
+                      <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</p>
+                      <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Declining */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
+                <h4 className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Value at Risk</h4>
+              </div>
+              <div className="space-y-1">
+                {otcWatchData.topDecliners.map((s, i) => (
+                  <button key={s.sku + i} onClick={() => navigate('/otc', { state: { selectedCategory: s.category } })} className="w-full flex items-center gap-1.5 text-left hover:bg-red-50 rounded p-1.5 -mx-1 transition-colors group">
+                    <span className="text-[9px] font-bold text-red-400 w-4">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] sm:text-[10px] text-slate-700 truncate group-hover:text-red-700 font-medium">{s.sku}</p>
+                      <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</p>
+                      <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* New entrants */}
+          {otcWatchData.newEntrants.length > 0 && (
+            <div className="mb-4 p-2.5 bg-teal-50/50 rounded-lg">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <TrendingUp className="w-3 h-3 text-teal-600" />
+                <h4 className="text-[9px] font-bold text-teal-700 uppercase tracking-wide">New Entrants</h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {otcWatchData.newEntrants.map(n => (
+                  <button key={n.sku} onClick={() => navigate('/otc', { state: { selectedCategory: n.category } })} className="bg-white rounded-lg border border-teal-100 px-2.5 py-1.5 hover:border-teal-300 transition-colors text-left">
+                    <p className="text-[9px] font-medium text-slate-700 truncate max-w-[180px]">{n.sku}</p>
+                    <p className="text-[8px] text-teal-600 font-bold">{formatCompactDollar(n.tyValue)} <span className="text-slate-400 font-normal">· {n.category}</span></p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category drill-down selector */}
+          <div className="border-t border-slate-100 pt-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Target className="w-3 h-3 text-teal-600" />
+              <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Drill by Category</h4>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {otcWatchData.categories.filter(c => c.lyValue > 5000).sort((a, b) => Math.abs(b.tyValue - b.lyValue) - Math.abs(a.tyValue - a.lyValue)).slice(0, 12).map(c => (
+                <button
+                  key={c.category}
+                  onClick={() => setOtcWatchCat(otcWatchCat === c.category ? null : c.category)}
+                  className={`text-[8px] sm:text-[9px] px-2 py-1 rounded-lg border transition-colors ${
+                    otcWatchCat === c.category
+                      ? 'bg-teal-100 border-teal-300 text-teal-700 font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:border-teal-200 hover:bg-teal-50'
+                  }`}
+                >
+                  {c.category.length > 20 ? c.category.slice(0, 18) + '...' : c.category}
+                  <span className={`ml-1 font-bold ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(0)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Selected category detail */}
+            {otcWatchCatDetail && (
+              <div className="bg-slate-50 rounded-lg p-3 animate-fade-in-up">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h5 className="text-[11px] font-bold text-slate-800">{otcWatchCatDetail.category}</h5>
+                    <p className="text-[9px] text-slate-500">
+                      {formatCompactDollar(otcWatchCatDetail.tyValue)} · {otcWatchCatDetail.valueGrowth >= 0 ? '+' : ''}{otcWatchCatDetail.valueGrowth.toFixed(1)}% · {otcWatchCatDetail.manufacturerCount} suppliers
+                    </p>
+                  </div>
+                  <button onClick={() => navigate('/otc', { state: { selectedCategory: otcWatchCatDetail.category } })} className="text-[8px] text-teal-600 font-semibold flex items-center gap-0.5 hover:underline">
+                    Full analysis <ArrowRight className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {otcWatchCatDetail.rising.length > 0 && (
+                    <div>
+                      <p className="text-[8px] font-semibold text-emerald-600 uppercase tracking-wider mb-1">Rising in {otcWatchCatDetail.category}</p>
+                      {otcWatchCatDetail.rising.map(s => (
+                        <div key={s.sku} className="flex items-center gap-1.5 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {otcWatchCatDetail.declining.length > 0 && (
+                    <div>
+                      <p className="text-[8px] font-semibold text-red-500 uppercase tracking-wider mb-1">Declining in {otcWatchCatDetail.category}</p>
+                      {otcWatchCatDetail.declining.map(s => (
+                        <div key={s.sku} className="flex items-center gap-1.5 py-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                          <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
+                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

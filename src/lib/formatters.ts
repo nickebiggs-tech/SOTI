@@ -10,12 +10,14 @@ export function formatCurrencyDecimal(value: number): string {
   return `$${value.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-/** Format as $20.4B / $9.3M / $450K / $1,234 */
+/** Format as $20.4B / $9.3M / $450K / $1,234 — handles negatives */
 export function formatCompactDollar(value: number): string {
-  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`
-  return `$${Math.round(value)}`
+  const abs = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`
+  return `${sign}$${Math.round(abs)}`
 }
 
 export function formatPercent(value: number, decimals = 1): string {

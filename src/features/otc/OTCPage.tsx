@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
 import {
   BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -429,13 +429,13 @@ export function OTCPage() {
         />
       </div>
 
-      {/* Category cards */}
+      {/* Category cards with inline drill-in */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredCats.map((cat) => {
           const isSelected = selectedCat === cat.category
           return (
+            <React.Fragment key={cat.category}>
             <button
-              key={cat.category}
               onClick={() => setSelectedCat(isSelected ? null : cat.category)}
               className={`bg-white rounded-xl border text-left transition-all group overflow-hidden ${
                 isSelected ? 'border-teal-500 shadow-md' : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
@@ -471,13 +471,9 @@ export function OTCPage() {
                 </div>
               </div>
             </button>
-          )
-        })}
-      </div>
-
-      {/* Drill-in panel */}
-      {selectedCat && mfrBreakdown.length > 0 && (
-        <div ref={drillRef} className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up">
+            {/* Inline drill-in panel — appears directly below selected category */}
+            {isSelected && mfrBreakdown.length > 0 && (
+            <div ref={drillRef} className="col-span-1 sm:col-span-2 lg:col-span-3 bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up">
           <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-100 bg-teal-50/30">
             <div>
               <h3 className="text-sm font-bold text-slate-800">{selectedCat}</h3>
@@ -558,9 +554,10 @@ export function OTCPage() {
             {/* Manufacturer share & growth — click to filter SKUs */}
             <div>
               <h4 className="text-xs font-semibold text-slate-600 mb-3">Market Share & Growth</h4>
-              <div className="space-y-0.5 max-h-[250px] overflow-y-auto scrollbar-thin">
+              <div className="space-y-0.5 max-h-[280px] overflow-y-auto scrollbar-thin">
                 {mfrBreakdown.slice(0, 15).map((m, i) => {
                   const isSel = selectedMfr === m.manufacturer
+                  const absChange = m.tyValue - m.lyValue
                   return (
                     <button
                       key={m.manufacturer}
@@ -569,7 +566,11 @@ export function OTCPage() {
                     >
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                       <span className="text-[9px] sm:text-[10px] text-slate-600 flex-1 truncate text-left">{m.manufacturer}</span>
-                      <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
+                      <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 w-12 text-right hidden sm:block">{formatCompactDollar(m.tyValue)}</span>
+                      <span className={`text-[8px] sm:text-[9px] font-bold w-14 text-right hidden sm:block ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                      </span>
+                      <div className="w-10 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                       </div>
                       <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
@@ -632,6 +633,10 @@ export function OTCPage() {
           </div>
         </div>
       )}
+      </React.Fragment>
+          )
+        })}
+      </div>
 
       {/* Footer */}
       <div className="text-center py-4 mt-2">
