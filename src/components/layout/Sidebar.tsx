@@ -46,10 +46,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <div className="flex-1 overflow-hidden">
             <div className="flex items-center gap-2.5">
               <span className="text-[17px] font-extrabold text-white tracking-tight">SOTI</span>
-              <span className="text-[9px] text-white/40 font-medium">by NostraData</span>
+            </div>
+            <div className="mt-0.5">
+              <span className="text-[9px] text-white/50 font-semibold uppercase tracking-widest">State of the Industry</span>
             </div>
             <div className="mt-1">
-              <span className="text-[8px] text-white/30 font-semibold uppercase tracking-widest">State of the Industry</span>
+              <span className="text-[8px] text-white/40 font-medium">Powered by <span className="font-bold text-white/60">NostraData</span></span>
             </div>
           </div>
         )}
@@ -88,8 +90,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       {/* Powered by */}
       {(!collapsed || mobileOpen) && (
-        <div className="px-4 py-3 border-t border-white/10">
-          <p className="text-[10px] text-white/30">Powered by {livery.poweredBy}</p>
+        <div className="px-4 py-4 border-t border-white/10 bg-white/[0.03]">
+          <p className="text-[11px] text-white/50 font-medium">Powered by <span className="font-bold text-white/70">{livery.poweredBy}</span></p>
         </div>
       )}
     </>

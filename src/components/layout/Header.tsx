@@ -26,8 +26,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <span className="text-base sm:text-sm font-extrabold tracking-tight">
             <span className="text-primary">SOTI</span>
           </span>
-          <span className="hidden sm:inline text-xs text-slate-300">|</span>
-          <span className="hidden sm:inline text-xs text-slate-500 font-medium">{livery.name}</span>
+          <span className="hidden sm:inline text-[10px] text-slate-400 font-medium uppercase tracking-wider">State of the Industry</span>
+          <span className="hidden sm:inline text-[9px] text-slate-300 ml-1">by <span className="font-semibold text-slate-400">NostraData</span></span>
         </div>
       </div>
 

@@ -215,7 +215,7 @@ export function OTCPage() {
       <div>
         <div className="flex items-center gap-2 mb-0.5 sm:hidden">
           <span className="text-base font-extrabold tracking-tight"><span className="text-primary">SOTI</span></span>
-          <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-widest border border-slate-200 rounded px-1.5 py-0.5">OTC</span>
+          <span className="text-[7px] text-slate-400 font-medium uppercase tracking-wider">OTC</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">OTC / Front of Shop</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Consumer health market — category & manufacturer drill-in</p>
@@ -602,22 +602,29 @@ export function OTCPage() {
                       <th className="text-left py-1.5 text-slate-500 font-medium">Product</th>
                       {!selectedMfr && <th className="text-left py-1.5 text-slate-500 font-medium w-28">Manufacturer</th>}
                       <th className="text-right py-1.5 text-slate-500 font-medium w-20">TY Value</th>
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-20">LY Value</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-20 hidden sm:table-cell">LY Value</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-18">$ Change</th>
                       <th className="text-right py-1.5 text-slate-500 font-medium w-16">Growth</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {topSkus.map((s) => (
+                    {topSkus.map((s) => {
+                      const absChange = s.tyValue - s.lyValue
+                      return (
                       <tr key={s.name} className="border-b border-slate-50 hover:bg-slate-50/50">
                         <td className="py-1.5 text-slate-700 truncate max-w-[200px]">{s.name}</td>
                         {!selectedMfr && <td className="py-1.5 text-slate-400 truncate text-[9px]">{s.manufacturer}</td>}
                         <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                        <td className="text-right py-1.5 text-slate-500">{formatCompactDollar(s.lyValue)}</td>
+                        <td className="text-right py-1.5 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
+                        <td className={`text-right py-1.5 font-bold ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                        </td>
                         <td className={`text-right py-1.5 font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           {s.growth >= 0 ? '+' : ''}{s.growth.toFixed(0)}%
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -627,8 +634,8 @@ export function OTCPage() {
       )}
 
       {/* Footer */}
-      <div className="text-center py-2">
-        <p className="text-[9px] text-slate-300">Powered by <span className="font-semibold text-slate-400">NostraData</span></p>
+      <div className="text-center py-4 mt-2">
+        <p className="text-xs text-slate-400 font-medium">Powered by <span className="font-bold text-primary/70">NostraData</span></p>
       </div>
     </div>
   )

@@ -43,6 +43,59 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   const otcGrowing = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
   const otcDeclining = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 5)
 
+  // Build SKU-level data for Rx (aggregated by SKU across periods)
+  const rxSkuMap: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
+  state.eth.forEach(r => {
+    if (!rxSkuMap[r.sku]) rxSkuMap[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
+    const s = rxSkuMap[r.sku]!
+    if (r.period === 'APR24-MAR25') s.tyV += r.sales
+    else s.lyV += r.sales
+  })
+  const rxSkus = Object.entries(rxSkuMap).map(([sku, s]) => ({
+    sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
+    tyValue: s.tyV, lyValue: s.lyV,
+    growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999,
+    absChange: s.tyV - s.lyV,
+  }))
+  const topRxSkus = [...rxSkus].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
+  const topRxSkuGrowers = [...rxSkus].filter(s => s.lyValue > 5000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
+  const topRxSkuDecliners = [...rxSkus].filter(s => s.lyValue > 5000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+
+  // Build Pack Name (Item) level data for OTC
+  const topOtcItems = [...state.otc]
+    .map(r => ({
+      item: r.packName, category: r.market, manufacturer: r.manufacturer,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      absChange: r.tyValue - r.lyValue,
+    }))
+  const topOtcByValue = [...topOtcItems].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
+  const topOtcGrowers = [...topOtcItems].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
+  const topOtcDecliners = [...topOtcItems].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+
+  // Build manufacturer-level summaries
+  const rxMfrMap: Record<string, { tyV: number; lyV: number }> = {}
+  state.eth.forEach(r => {
+    if (!rxMfrMap[r.manufacturer]) rxMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
+    const m = rxMfrMap[r.manufacturer]!
+    if (r.period === 'APR24-MAR25') m.tyV += r.sales
+    else m.lyV += r.sales
+  })
+  const topRxMfrs = Object.entries(rxMfrMap)
+    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
+    .sort((a, b) => b.tyV - a.tyV).slice(0, 15)
+
+  const otcMfrMap: Record<string, { tyV: number; lyV: number }> = {}
+  state.otc.forEach(r => {
+    if (!otcMfrMap[r.manufacturer]) otcMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
+    const m = otcMfrMap[r.manufacturer]!
+    m.tyV += r.tyValue
+    m.lyV += r.lyValue
+  })
+  const topOtcMfrs = Object.entries(otcMfrMap)
+    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
+    .sort((a, b) => b.tyV - a.tyV).slice(0, 15)
+
   return `You are SOTI AI — the commercial intelligence engine for NostraData's State of the Industry platform. You think and communicate like a senior IQVIA market analyst. You provide commercially actionable insights that pharma executives, suppliers, and pharmacy groups would pay for.
 
 MARKET OVERVIEW:
@@ -50,8 +103,8 @@ MARKET OVERVIEW:
 - Prescription (Rx/Dispense): ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)
 - OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)
 - Rx:OTC Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
-- Total Rx Records: ${formatCompact(state.eth.length)}
-- Total OTC Records: ${formatCompact(state.otc.length)}
+- Total Rx SKUs: ${rxSkus.length}
+- Total OTC Items (Pack Names): ${state.otc.length}
 - Rx Categories: ${ethCategories.length}
 - OTC Categories: ${otcCategories.length}
 
@@ -73,15 +126,45 @@ ${otcGrowing.map(c => `${c.category}: +${c.valueGrowth.toFixed(1)}% (${formatCom
 DECLINING OTC (value at risk):
 ${otcDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
+TOP 25 RX SKUs (finest grain, by value):
+${topRxSkus.map((s, i) => `${i + 1}. ${s.sku} | Mfr: ${s.manufacturer} | Category: ${s.category} | Molecule: ${s.molecule} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`).join('\n')}
+
+FASTEST GROWING RX SKUs:
+${topRxSkuGrowers.map(s => `${s.sku} (${s.manufacturer}): +${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | +${formatCompactDollar(s.absChange)}`).join('\n')}
+
+DECLINING RX SKUs (value at risk):
+${topRxSkuDecliners.map(s => `${s.sku} (${s.manufacturer}): ${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | ${formatCompactDollar(s.absChange)}`).join('\n')}
+
+TOP 25 OTC ITEMS / PACK NAMES (finest grain, by value):
+${topOtcByValue.map((s, i) => `${i + 1}. ${s.item} | Mfr: ${s.manufacturer} | Category: ${s.category} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`).join('\n')}
+
+FASTEST GROWING OTC ITEMS:
+${topOtcGrowers.map(s => `${s.item} (${s.manufacturer}): +${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | +${formatCompactDollar(s.absChange)}`).join('\n')}
+
+DECLINING OTC ITEMS (value at risk):
+${topOtcDecliners.map(s => `${s.item} (${s.manufacturer}): ${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | ${formatCompactDollar(s.absChange)}`).join('\n')}
+
+TOP 15 RX MANUFACTURERS (by value):
+${topRxMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)}, Growth ${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}%`).join('\n')}
+
+TOP 15 OTC MANUFACTURERS (by value):
+${topOtcMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)}, Growth ${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}%`).join('\n')}
+
+DATA HIERARCHY (for drill-down context):
+- Rx: Category → Molecule → Manufacturer → SKU (finest grain)
+- OTC: Category (Market) → Manufacturer → Pack Name / Item (finest grain)
+
 INSTRUCTIONS:
 - All currency values MUST use $ (e.g., $20.4M, $1.2B, $450K) — never use AUD or A$
 - Think like a senior IQVIA market analyst — frame everything commercially
+- When users ask about specific products, SKUs, pack names, or items — use the granular SKU/Item data above to answer precisely
+- When users ask about a specific manufacturer/supplier, reference their SKU portfolio data above
 - Size opportunities in dollar terms ("this represents a $X opportunity")
 - Quantify risks ("$X in value at risk from channel leakage")
 - Provide actionable recommendations (e.g., "suppliers should increase trade investment", "recommend SKU rationalisation")
-- Reference specific data points — numbers, percentages, category names
+- Reference specific data points — numbers, percentages, category names, SKU names
 - Use competitive intelligence language — market share, portfolio optimisation, channel dynamics
-- If you don't have data, say so honestly — never fabricate figures
+- If you don't have data for a specific product, say so honestly — never fabricate figures
 - Format with clear structure (bullets, bold for key figures)
 - Position insights as commercially valuable — this is intelligence worth paying for`
 }
@@ -112,7 +195,7 @@ async function callClaude(messages: { role: string; content: string }[], systemP
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     }),
@@ -180,7 +263,34 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
     return `Average category growth rates:\n- Rx: ${avgRx >= 0 ? '+' : ''}${avgRx.toFixed(1)}% across ${ethCategories.length} categories (${formatCompactDollar(ethTotalTY)} total)\n- OTC: ${avgOtc >= 0 ? '+' : ''}${avgOtc.toFixed(1)}% across ${otcCategories.length} categories (${formatCompactDollar(otcTotalTY)} total)\n\nCategories growing above average represent disproportionate investment opportunities for suppliers.`
   }
 
-  return `SOTI Market Intelligence — ${formatCompact(data.state.eth.length + data.state.otc.length)} product records analysed.\n\nTry asking:\n- "What is the total pharmacy market value?"\n- "What are the fastest growing Rx categories?"\n- "Which OTC categories have value at risk?"\n- "How many suppliers compete in the market?"\n\nFor Claude-powered intelligence, add your API key to .env.local:\nVITE_ANTHROPIC_API_KEY=sk-ant-...`
+  // SKU / Item / Pack Name level queries
+  if (q.includes('sku') || q.includes('item') || q.includes('pack name') || q.includes('product') || q.includes('top sku') || q.includes('top item')) {
+    const isOtc = q.includes('otc') || q.includes('item') || q.includes('pack name')
+    if (isOtc) {
+      const otcItems = [...data.state.otc]
+        .map(r => ({ name: r.packName, mfr: r.manufacturer, cat: r.market, tyV: r.tyValue, lyV: r.lyValue, chg: r.tyValue - r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999 }))
+        .sort((a, b) => b.tyV - a.tyV).slice(0, 10)
+      return `Top 10 OTC Items (Pack Names) by value:\n${otcItems.map((s, i) => {
+        const chgStr = s.chg >= 0 ? `+${formatCompactDollar(s.chg)}` : formatCompactDollar(s.chg)
+        return `${i + 1}. ${s.name}\n   Manufacturer: ${s.mfr} | Category: ${s.cat}\n   TY: ${formatCompactDollar(s.tyV)} | Change: ${chgStr} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`
+      }).join('\n\n')}`
+    } else {
+      const rxSkuMap2: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
+      data.state.eth.forEach(r => {
+        if (!rxSkuMap2[r.sku]) rxSkuMap2[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
+        const s = rxSkuMap2[r.sku]!
+        if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
+      })
+      const topSkus = Object.entries(rxSkuMap2).map(([sku, s]) => ({ sku, ...s, chg: s.tyV - s.lyV, growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999 }))
+        .sort((a, b) => b.tyV - a.tyV).slice(0, 10)
+      return `Top 10 Rx SKUs by value:\n${topSkus.map((s, i) => {
+        const chgStr = s.chg >= 0 ? `+${formatCompactDollar(s.chg)}` : formatCompactDollar(s.chg)
+        return `${i + 1}. ${s.sku}\n   Manufacturer: ${s.mfr} | Molecule: ${s.mol} | Category: ${s.cat}\n   TY: ${formatCompactDollar(s.tyV)} | Change: ${chgStr} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`
+      }).join('\n\n')}`
+    }
+  }
+
+  return `SOTI Market Intelligence — ${formatCompact(data.state.eth.length + data.state.otc.length)} product records analysed.\n\nTry asking:\n- "What is the total pharmacy market value?"\n- "What are the top Rx SKUs?"\n- "What are the top OTC items / pack names?"\n- "Which categories are growing fastest?"\n- "Which OTC categories have value at risk?"\n\nFor Claude-powered intelligence, add your API key in the header above.`
 }
 
 export function AskPage() {
@@ -282,14 +392,14 @@ export function AskPage() {
       <div className="px-4 sm:px-6 py-3 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-0.5 sm:hidden">
           <span className="text-base font-extrabold tracking-tight"><span className="text-primary">SOTI</span></span>
-          <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-widest border border-slate-200 rounded px-1.5 py-0.5">AI</span>
+          <span className="text-[7px] text-slate-400 font-medium uppercase tracking-wider">AI Assistant</span>
         </div>
         <div className="hidden sm:flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
             <Bot className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-slate-900">SOTI AI</h1>
+            <h1 className="text-lg font-bold text-slate-900">SOTI AI <span className="text-xs font-medium text-slate-400">State of the Industry</span></h1>
             <p className="text-[10px] text-slate-400">
               {hasApiKey ? 'Powered by Claude' : 'Rule-based responses'} &middot; {formatCompact(data.state.eth.length + data.state.otc.length)} data points
             </p>
@@ -447,8 +557,8 @@ export function AskPage() {
             <Send className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-center text-[9px] text-slate-300 mt-2">
-          Powered by <span className="font-semibold text-slate-400">NostraData</span>
+        <p className="text-center text-[10px] text-slate-400 mt-2 font-medium">
+          Powered by <span className="font-bold text-primary/70">NostraData</span>
         </p>
       </div>
     </div>

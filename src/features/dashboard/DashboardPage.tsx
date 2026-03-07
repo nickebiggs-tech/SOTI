@@ -7,6 +7,7 @@ import {
 import {
   Pill, ShoppingBag, ArrowRight, ChevronDown,
   DollarSign, Package, Factory, FlaskConical, Sparkles, Target, AlertTriangle,
+  BarChart3, TrendingUp, TrendingDown, Award,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
@@ -98,15 +99,45 @@ export function DashboardPage() {
   const otcGrowers = useMemo(() => otcCategories.filter(c => c.lyValue > 50000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 4), [otcCategories])
   const otcDecliners = useMemo(() => otcCategories.filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 4), [otcCategories])
 
+  const [dashSkuTab, setDashSkuTab] = useState<'rx' | 'otc'>('rx')
+
+  // Top SKUs (Rx) aggregated
+  const topRxSkus = useMemo(() => {
+    const map: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
+    state.eth.forEach(r => {
+      if (!map[r.sku]) map[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
+      const s = map[r.sku]!
+      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
+    })
+    return Object.entries(map).map(([sku, s]) => ({
+      name: sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
+      tyValue: s.tyV, lyValue: s.lyV,
+      growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999,
+      absChange: s.tyV - s.lyV,
+    })).sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
+  }, [state.eth])
+
+  // Top OTC Items
+  const topOtcItems = useMemo(() => {
+    return [...state.otc].map(r => ({
+      name: r.packName, category: r.market, manufacturer: r.manufacturer,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      absChange: r.tyValue - r.lyValue,
+    })).sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
+  }, [state.otc])
+
+  const activeSkuList = dashSkuTab === 'rx' ? topRxSkus : topOtcItems
+
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-0.5 sm:hidden">
           <span className="text-base font-extrabold tracking-tight"><span className="text-primary">SOTI</span></span>
-          <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-widest border border-slate-200 rounded px-1.5 py-0.5">Dashboard</span>
+          <span className="text-[7px] text-slate-400 font-medium uppercase tracking-wider">State of the Industry</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">State of the Industry</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">State of the Industry <span className="text-sm font-medium text-slate-400">(SOTI)</span></h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
           Australian pharmacy market — Dispense & OTC combined view
         </p>
@@ -322,6 +353,73 @@ export function DashboardPage() {
         </div>
       </div>
 
+      {/* ── Top SKUs & Items ── */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+        <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-violet-50/60 to-indigo-50/40">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <BarChart3 className="w-4 h-4 text-violet-600 shrink-0" />
+            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Top SKUs & Items</h3>
+            <span className="text-[7px] sm:text-[8px] bg-violet-100 text-violet-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">By Value</span>
+          </div>
+        </div>
+        <div className="flex border-b border-slate-100">
+          {([
+            { key: 'rx' as const, label: 'Rx SKUs', icon: <Pill className="w-3 h-3" /> },
+            { key: 'otc' as const, label: 'OTC Items', icon: <ShoppingBag className="w-3 h-3" /> },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setDashSkuTab(tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-3 text-[9px] sm:text-[10px] font-semibold transition-colors ${
+                dashSkuTab === tab.key
+                  ? 'text-violet-700 border-b-2 border-violet-600 bg-violet-50/40'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="p-3 sm:p-5 overflow-x-auto">
+          <table className="w-full text-[9px] sm:text-[10px]">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left py-2 text-slate-500 font-medium w-5 sm:w-6">#</th>
+                <th className="text-left py-2 text-slate-500 font-medium">{dashSkuTab === 'rx' ? 'SKU' : 'Item'}</th>
+                <th className="text-left py-2 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
+                <th className="text-left py-2 text-slate-500 font-medium w-24 hidden lg:table-cell">Category</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">Value</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">$ Change</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-14 sm:w-16">Growth</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeSkuList.map((s, i) => (
+                <tr
+                  key={s.name + i}
+                  onClick={() => navigate(dashSkuTab === 'rx' ? '/dispense' : '/otc', { state: { selectedCategory: s.category } })}
+                  className="border-b border-slate-50 hover:bg-violet-50/60 active:bg-violet-100/60 transition-colors cursor-pointer group"
+                  title={`Drill into ${s.category}`}
+                >
+                  <td className="py-2.5 sm:py-2 text-slate-400 font-bold">{i + 1}</td>
+                  <td className="py-2.5 sm:py-2 text-slate-700 truncate max-w-[120px] sm:max-w-[220px] font-medium group-hover:text-violet-700">{s.name}</td>
+                  <td className="py-2.5 sm:py-2 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
+                  <td className="py-2.5 sm:py-2 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
+                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
+                  <td className={`text-right py-2.5 sm:py-2 font-bold ${s.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {s.absChange >= 0 ? '+' : ''}{formatCompactDollar(s.absChange)}
+                  </td>
+                  <td className={`text-right py-2.5 sm:py-2 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {s.growth >= 900 ? 'New' : `${s.growth >= 0 ? '+' : ''}${s.growth.toFixed(0)}%`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[8px] text-violet-400 italic">Tap any row to drill into its category</p>
+        </div>
+      </div>
+
       {/* Market Intelligence — compact collapsible */}
       <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-xl overflow-hidden">
         <button
@@ -348,8 +446,8 @@ export function DashboardPage() {
       </div>
 
       {/* Footer */}
-      <div className="text-center py-2">
-        <p className="text-[9px] text-slate-300">Powered by <span className="font-semibold text-slate-400">NostraData</span></p>
+      <div className="text-center py-4 mt-2">
+        <p className="text-xs text-slate-400 font-medium">Powered by <span className="font-bold text-primary/70">NostraData</span></p>
       </div>
     </div>
   )
