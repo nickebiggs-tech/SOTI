@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Eye,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useTheme } from '../../theme/ThemeProvider'
@@ -19,6 +20,8 @@ const NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/dispense', icon: Pill, label: 'Dispense' },
   { to: '/otc', icon: ShoppingBag, label: 'OTC' },
+  { to: '/rx-watch', icon: Eye, label: 'Rx Watch' },
+  { to: '/otc-watch', icon: Eye, label: 'OTC Watch' },
   { to: '/insights', icon: BookOpen, label: 'Insights' },
   { to: '/seasonality', icon: CalendarDays, label: 'Seasonality' },
   { to: '/ask', icon: Bot, label: 'Ask SOTI' },

@@ -11,6 +11,8 @@ import { InsightsPage } from './features/insights/InsightsPage'
 import { AskPage } from './features/ask/AskPage'
 import { BrandingPage } from './features/admin/BrandingPage'
 import { SeasonalityPage } from './features/seasonality/SeasonalityPage'
+import { RxWatchPage } from './features/rx-watch/RxWatchPage'
+import { OTCWatchPage } from './features/otc-watch/OTCWatchPage'
 
 export default function App() {
   return (
@@ -24,6 +26,8 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/dispense" element={<DispensePage />} />
                 <Route path="/otc" element={<OTCPage />} />
+                <Route path="/rx-watch" element={<RxWatchPage />} />
+                <Route path="/otc-watch" element={<OTCWatchPage />} />
                 <Route path="/insights" element={<InsightsPage />} />
                 <Route path="/seasonality" element={<SeasonalityPage />} />
                 <Route path="/ask" element={<AskPage />} />
