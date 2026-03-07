@@ -6,13 +6,11 @@ import {
 } from 'recharts'
 import {
   ShoppingBag, ChevronDown, ChevronRight, Sparkles, Target, Flame, ShieldAlert, Eye,
-  TrendingUp, TrendingDown, ArrowRight, Search, BarChart3, Package, Factory,
+  TrendingUp, TrendingDown, ArrowRight, Search, BarChart3, Factory,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
-import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
-
-const COLORS = ['#0D9488', '#2563EB', '#7C3AED', '#D97706', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+import { formatCompact, formatCompactDollar } from '../../lib/formatters'
 
 interface SkuItem {
   sku: string
@@ -42,7 +40,7 @@ interface WatchCategory {
 
 function generateOTCWatchNarrative(
   totalTY: number, growth: number,
-  topRisers: SkuItem[], topDecliners: SkuItem[], newEntrants: SkuItem[],
+  topRisers: SkuItem[], topDecliners: SkuItem[], _newEntrants: SkuItem[],
   catGrowers: WatchCategory[], catDecliners: WatchCategory[],
 ): string[] {
   const lines: string[] = []
@@ -231,7 +229,7 @@ export function OTCWatchPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={110} />
-              <Tooltip formatter={(v: number) => formatCompactDollar(v)} />
+              <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
               <Bar dataKey="gain" name="Value Gained" fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
               <Bar dataKey="loss" name="Value Lost" fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
             </BarChart>
@@ -255,10 +253,10 @@ export function OTCWatchPage() {
               <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={130} />
               <Tooltip
-                formatter={(v: number) => formatCompactDollar(v)}
-                labelFormatter={(label: string) => {
+                formatter={(v) => formatCompactDollar(v as number)}
+                labelFormatter={(label) => {
                   const item = catChartData.find(c => c.name === label)
-                  return item ? `${item.fullName} (TY: ${formatCompactDollar(item.tyValue)})` : label
+                  return item ? `${item.fullName} (TY: ${formatCompactDollar(item.tyValue)})` : String(label)
                 }}
               />
               <Bar dataKey="value" name="$ Change" radius={[0, 4, 4, 0]} animationDuration={800}>

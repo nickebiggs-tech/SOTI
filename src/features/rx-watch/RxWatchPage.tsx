@@ -1,18 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  BarChart, Bar, Cell, ComposedChart, Line, Area,
+  BarChart, Bar, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import {
   Pill, ChevronDown, ChevronRight, Sparkles, Target, Flame, ShieldAlert, Eye,
-  TrendingUp, TrendingDown, ArrowRight, Search, BarChart3, Package, Factory,
+  TrendingUp, TrendingDown, ArrowRight, Search, BarChart3, Factory,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
-import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
-
-const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+import { formatCompact, formatCompactDollar } from '../../lib/formatters'
 
 interface SkuItem {
   sku: string
@@ -44,7 +42,7 @@ interface WatchCategory {
 function generateRxWatchNarrative(
   totalTY: number, growth: number,
   topRisers: SkuItem[], topDecliners: SkuItem[], newEntrants: SkuItem[],
-  catGrowers: WatchCategory[], catDecliners: WatchCategory[],
+  catGrowers: WatchCategory[], _catDecliners: WatchCategory[],
 ): string[] {
   const lines: string[] = []
 
@@ -82,19 +80,13 @@ export function RxWatchPage() {
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
 
-  // Full SKU-level aggregation
+  // Full SKU-level data — already pre-aggregated
   const watchData = useMemo(() => {
-    const skuMap: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-    state.eth.forEach(r => {
-      if (!skuMap[r.sku]) skuMap[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-      const s = skuMap[r.sku]!
-      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
-    })
-    const allSkus: SkuItem[] = Object.entries(skuMap).map(([sku, s]) => ({
-      sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-      tyValue: s.tyV, lyValue: s.lyV,
-      absChange: s.tyV - s.lyV,
-      growth: s.lyV > 0 ? ((s.tyV - s.lyV) / s.lyV) * 100 : (s.tyV > 0 ? 999 : 0),
+    const allSkus: SkuItem[] = state.ethSkus.map(r => ({
+      sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      absChange: r.tyValue - r.lyValue,
+      growth: r.lyValue > 0 ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : (r.tyValue > 0 ? 999 : 0),
     }))
 
     // Build category-level with product drill-down
@@ -117,14 +109,14 @@ export function RxWatchPage() {
     const newEntrants = [...allSkus].filter(s => s.growth >= 900 && s.tyValue > 10000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 8)
 
     return { categories, topRisers, topDecliners, newEntrants, allSkus }
-  }, [state.eth, ethCategories])
+  }, [state.ethSkus, ethCategories])
 
   // Derived
   const catGrowers = useMemo(() => watchData.categories.filter(c => c.absChange > 0 && c.lyValue > 10000).sort((a, b) => b.absChange - a.absChange), [watchData])
   const catDecliners = useMemo(() => watchData.categories.filter(c => c.absChange < 0 && c.lyValue > 10000).sort((a, b) => a.absChange - b.absChange), [watchData])
   const totalGrowing = watchData.topRisers.reduce((s, r) => s + r.absChange, 0)
   const totalDeclining = watchData.topDecliners.reduce((s, d) => s + Math.abs(d.absChange), 0)
-  const mfrCount = useMemo(() => new Set(state.eth.map(r => r.manufacturer)).size, [state.eth])
+  const mfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
 
   // Chart data — top category movers
   const catChartData = useMemo(() => {
@@ -242,7 +234,7 @@ export function RxWatchPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={110} />
-              <Tooltip formatter={(v: number) => formatCompactDollar(v)} />
+              <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
               <Bar dataKey="gain" name="Value Gained" fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
               <Bar dataKey="loss" name="Value Lost" fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
             </BarChart>
@@ -266,10 +258,10 @@ export function RxWatchPage() {
               <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={130} />
               <Tooltip
-                formatter={(v: number) => formatCompactDollar(v)}
-                labelFormatter={(label: string) => {
+                formatter={(v) => formatCompactDollar(v as number)}
+                labelFormatter={(label) => {
                   const item = catChartData.find(c => c.name === label)
-                  return item ? `${item.fullName} (TY: ${formatCompactDollar(item.tyValue)})` : label
+                  return item ? `${item.fullName} (TY: ${formatCompactDollar(item.tyValue)})` : String(label)
                 }}
               />
               <Bar dataKey="value" name="$ Change" radius={[0, 4, 4, 0]} animationDuration={800}>

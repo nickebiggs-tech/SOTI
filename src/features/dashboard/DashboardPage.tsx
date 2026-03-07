@@ -72,9 +72,9 @@ export function DashboardPage() {
   const totalMarketLY = ethTotalLY + otcTotalLY
   const totalGrowth = totalMarketLY ? ((totalMarket - totalMarketLY) / totalMarketLY) * 100 : 0
 
-  const ethSkuCount = useMemo(() => new Set(state.eth.map(r => r.sku)).size, [state.eth])
+  const ethSkuCount = state.ethSkus.length
   const otcSkuCount = useMemo(() => new Set(state.otc.map(r => r.packName)).size, [state.otc])
-  const ethMfrCount = useMemo(() => new Set(state.eth.map(r => r.manufacturer)).size, [state.eth])
+  const ethMfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
   const otcMfrCount = useMemo(() => new Set(state.otc.map(r => r.manufacturer)).size, [state.otc])
 
   // Top 10 categories for each
@@ -103,21 +103,15 @@ export function DashboardPage() {
   const [rxWatchCat, setRxWatchCat] = useState<string | null>(null)
   const [otcWatchCat, setOtcWatchCat] = useState<string | null>(null)
 
-  // Top SKUs (Rx) aggregated
+  // Top SKUs (Rx) — already aggregated at SKU level
   const topRxSkus = useMemo(() => {
-    const map: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-    state.eth.forEach(r => {
-      if (!map[r.sku]) map[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-      const s = map[r.sku]!
-      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
-    })
-    return Object.entries(map).map(([sku, s]) => ({
-      name: sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-      tyValue: s.tyV, lyValue: s.lyV,
-      growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999,
-      absChange: s.tyV - s.lyV,
+    return state.ethSkus.map(r => ({
+      name: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      absChange: r.tyValue - r.lyValue,
     })).sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
-  }, [state.eth])
+  }, [state.ethSkus])
 
   // Top OTC Items
   const topOtcItems = useMemo(() => {
@@ -133,18 +127,11 @@ export function DashboardPage() {
 
   // ── Rx Watch: category-level growth/decline with product drill-down ──
   const rxWatchData = useMemo(() => {
-    // Per-SKU aggregation across all categories
-    const skuMap: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-    state.eth.forEach(r => {
-      if (!skuMap[r.sku]) skuMap[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-      const s = skuMap[r.sku]!
-      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
-    })
-    const allSkus = Object.entries(skuMap).map(([sku, s]) => ({
-      sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-      tyValue: s.tyV, lyValue: s.lyV,
-      absChange: s.tyV - s.lyV,
-      growth: s.lyV > 0 ? ((s.tyV - s.lyV) / s.lyV) * 100 : (s.tyV > 0 ? 999 : 0),
+    const allSkus = state.ethSkus.map(r => ({
+      sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      absChange: r.tyValue - r.lyValue,
+      growth: r.lyValue > 0 ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : (r.tyValue > 0 ? 999 : 0),
     }))
 
     // Categories with their top rising & declining products
@@ -168,7 +155,7 @@ export function DashboardPage() {
     const newEntrants = [...allSkus].filter(s => s.growth >= 900 && s.tyValue > 10000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 5)
 
     return { categories, topRisers, topDecliners, newEntrants }
-  }, [state.eth, ethCategories])
+  }, [state.ethSkus, ethCategories])
 
   // Selected Rx Watch category details
   const rxWatchCatDetail = useMemo(() => {
@@ -874,7 +861,7 @@ export function DashboardPage() {
               <p key={i} className="text-[11px] text-white/60 leading-relaxed">{line}</p>
             ))}
             <p className="text-[8px] text-white/25 mt-2">
-              Source: {formatCompact(state.eth.length + state.otc.length)} records · NostraData Market Intelligence
+              Source: {formatCompact(state.ethSkus.length + state.otc.length)} records · NostraData Market Intelligence
             </p>
           </div>
         )}

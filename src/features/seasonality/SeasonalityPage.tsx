@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceArea, LineChart,
@@ -421,16 +421,22 @@ function monthLabel(monthId: number): string {
 
 /* ─── Page Component ────────────────────────────────────────────────── */
 export function SeasonalityPage() {
-  const { state } = useData()
+  const { state, loadMonthlyData } = useData()
 
   const [narrativeOpen, setNarrativeOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
 
+  // Trigger lazy load of monthly data
+  useEffect(() => { loadMonthlyData() }, [loadMonthlyData])
+
+  const ethMonthly = state.ethMonthly
+
   /* ── Monthly aggregation by seasonal group ─────────────────────────── */
   const monthlyByGroup = useMemo(() => {
+    if (!ethMonthly) return []
     const map: Record<number, Record<SeasonalGroup, number>> = {}
-    state.eth.forEach(r => {
+    ethMonthly.forEach(r => {
       const group = SEASONAL_CATEGORY_MAP[r.category]
       if (!group) return
       if (!map[r.monthId]) map[r.monthId] = { 'cold-flu': 0, 'allergy': 0, 'skin-sun': 0, 'pain-sport': 0 }
@@ -444,7 +450,7 @@ export function SeasonalityPage() {
         ...groups,
       }))
       .sort((a, b) => a.monthId - b.monthId)
-  }, [state.eth])
+  }, [ethMonthly])
 
   /* ── Seasonal indices (peak / trough per group) ────────────────────── */
   const seasonalIndices = useMemo(() => {
@@ -474,13 +480,14 @@ export function SeasonalityPage() {
   /* ── Category deep-dive monthly trend ──────────────────────────────── */
   const categoryMonthlyTrend = useMemo(() => {
     if (!selectedCategory) return []
-    const catData = state.eth.filter(r => r.category === selectedCategory)
+    if (!ethMonthly) return []
+    const catData = ethMonthly.filter(r => r.category === selectedCategory)
     const map: Record<number, number> = {}
     catData.forEach(r => { map[r.monthId] = (map[r.monthId] ?? 0) + r.sales })
     return Object.entries(map)
       .map(([id, sales]) => ({ monthId: parseInt(id, 10), month: monthLabel(parseInt(id, 10)), sales }))
       .sort((a, b) => a.monthId - b.monthId)
-  }, [selectedCategory, state.eth])
+  }, [selectedCategory, ethMonthly])
 
   /* ── Category deep-dive KPIs ───────────────────────────────────────── */
   const categoryKPIs = useMemo(() => {
@@ -517,6 +524,17 @@ export function SeasonalityPage() {
   }, [seasonalIndices, coldFluYoY, monthlyByGroup])
 
   /* ── Render ────────────────────────────────────────────────────────── */
+  if (!ethMonthly) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 text-sm">Loading seasonal data...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
       {/* ── Header ──────────────────────────────────────────────────── */}

@@ -139,8 +139,8 @@ export function InsightsPage() {
     const rxDir = ethGrowth >= 0 ? 'expanding' : 'declining'
     const otcDir = otcGrowth >= 0 ? 'recovering' : 'softening'
     const totalDelta = Math.abs(totalMarket - (ethTotalLY + otcTotalLY))
-    return `The Australian pharmacy industry ${dir} ${Math.abs(totalGrowth).toFixed(1)}% to ${formatCompactDollar(totalMarket)} (${totalGrowth >= 0 ? '+' : '-'}${formatCompactDollar(totalDelta)} net), with prescription sales ${rxDir} at ${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% (${formatCompactDollar(ethTotalTY)}) and OTC ${otcDir} at ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% (${formatCompactDollar(otcTotalTY)}). This intelligence platform synthesises ${formatCompact(state.eth.length + state.otc.length)} product-level records into commercially actionable insights for pharma executives, suppliers, and pharmacy groups.`
-  }, [totalGrowth, totalMarket, ethGrowth, ethTotalTY, ethTotalLY, otcGrowth, otcTotalTY, otcTotalLY, state.eth.length, state.otc.length])
+    return `The Australian pharmacy industry ${dir} ${Math.abs(totalGrowth).toFixed(1)}% to ${formatCompactDollar(totalMarket)} (${totalGrowth >= 0 ? '+' : '-'}${formatCompactDollar(totalDelta)} net), with prescription sales ${rxDir} at ${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% (${formatCompactDollar(ethTotalTY)}) and OTC ${otcDir} at ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% (${formatCompactDollar(otcTotalTY)}). This intelligence platform synthesises ${formatCompact(state.ethSkus.length + state.otc.length)} product-level records into commercially actionable insights for pharma executives, suppliers, and pharmacy groups.`
+  }, [totalGrowth, totalMarket, ethGrowth, ethTotalTY, ethTotalLY, otcGrowth, otcTotalTY, otcTotalLY, state.ethSkus.length, state.otc.length])
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -191,7 +191,7 @@ export function InsightsPage() {
         <KPICard title="Total Market" value={formatCompactDollar(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<BarChart3 className="w-4 h-4" />} />
         <KPICard title="Dispense (Rx)" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
         <KPICard title="OTC / FoS" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
-        <KPICard title="Data Points" value={formatCompact(state.eth.length + state.otc.length)} icon={<Sparkles className="w-4 h-4" />} />
+        <KPICard title="Data Points" value={formatCompact(state.ethSkus.length + state.otc.length)} icon={<Sparkles className="w-4 h-4" />} />
       </div>
 
       {/* Market Comparison Chart */}

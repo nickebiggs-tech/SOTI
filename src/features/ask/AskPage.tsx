@@ -43,19 +43,12 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   const otcGrowing = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
   const otcDeclining = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 5)
 
-  // Build SKU-level data for Rx (aggregated by SKU across periods)
-  const rxSkuMap: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-  state.eth.forEach(r => {
-    if (!rxSkuMap[r.sku]) rxSkuMap[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-    const s = rxSkuMap[r.sku]!
-    if (r.period === 'APR24-MAR25') s.tyV += r.sales
-    else s.lyV += r.sales
-  })
-  const rxSkus = Object.entries(rxSkuMap).map(([sku, s]) => ({
-    sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-    tyValue: s.tyV, lyValue: s.lyV,
-    growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999,
-    absChange: s.tyV - s.lyV,
+  // SKU-level data for Rx — pre-aggregated
+  const rxSkus = state.ethSkus.map(r => ({
+    sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+    tyValue: r.tyValue, lyValue: r.lyValue,
+    growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+    absChange: r.tyValue - r.lyValue,
   }))
   const topRxSkus = [...rxSkus].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
   const topRxSkuGrowers = [...rxSkus].filter(s => s.lyValue > 5000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
@@ -73,13 +66,13 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   const topOtcGrowers = [...topOtcItems].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
   const topOtcDecliners = [...topOtcItems].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
 
-  // Build manufacturer-level summaries
+  // Build manufacturer-level summaries from SKU data
   const rxMfrMap: Record<string, { tyV: number; lyV: number }> = {}
-  state.eth.forEach(r => {
+  state.ethSkus.forEach(r => {
     if (!rxMfrMap[r.manufacturer]) rxMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
     const m = rxMfrMap[r.manufacturer]!
-    if (r.period === 'APR24-MAR25') m.tyV += r.sales
-    else m.lyV += r.sales
+    m.tyV += r.tyValue
+    m.lyV += r.lyValue
   })
   const topRxMfrs = Object.entries(rxMfrMap)
     .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
@@ -104,7 +97,7 @@ MARKET OVERVIEW:
 - OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)
 - Rx:OTC Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
 - Total Rx SKUs: ${rxSkus.length}
-- Total OTC Items (Pack Names): ${state.otc.length}
+- Total OTC Items (Pack Names): ${topOtcItems.length}
 - Rx Categories: ${ethCategories.length}
 - OTC Categories: ${otcCategories.length}
 
@@ -248,7 +241,7 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
   }
 
   if (q.includes('manufacturer') || q.includes('supplier')) {
-    const mfrs = new Set(data.state.eth.map(r => r.manufacturer))
+    const mfrs = new Set(data.state.ethSkus.map(r => r.manufacturer))
     const otcMfrs = new Set(data.state.otc.map(r => r.manufacturer))
     return `Supplier landscape:\n- Rx: ${mfrs.size} manufacturers competing across ${ethCategories.length} categories (${formatCompactDollar(ethTotalTY)})\n- OTC: ${otcMfrs.size} suppliers across ${otcCategories.length} segments (${formatCompactDollar(otcTotalTY)})\n\nFor detailed supplier share and competitive positioning, drill into specific categories on the Dispense or OTC pages.`
   }
@@ -275,14 +268,10 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
         return `${i + 1}. ${s.name}\n   Manufacturer: ${s.mfr} | Category: ${s.cat}\n   TY: ${formatCompactDollar(s.tyV)} | Change: ${chgStr} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`
       }).join('\n\n')}`
     } else {
-      const rxSkuMap2: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-      data.state.eth.forEach(r => {
-        if (!rxSkuMap2[r.sku]) rxSkuMap2[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-        const s = rxSkuMap2[r.sku]!
-        if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
-      })
-      const topSkus = Object.entries(rxSkuMap2).map(([sku, s]) => ({ sku, ...s, chg: s.tyV - s.lyV, growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999 }))
-        .sort((a, b) => b.tyV - a.tyV).slice(0, 10)
+      const topSkus = data.state.ethSkus.map(r => ({
+        sku: r.sku, tyV: r.tyValue, lyV: r.lyValue, cat: r.category, mfr: r.manufacturer, mol: r.molecule,
+        chg: r.tyValue - r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      })).sort((a, b) => b.tyV - a.tyV).slice(0, 10)
       return `Top 10 Rx SKUs by value:\n${topSkus.map((s, i) => {
         const chgStr = s.chg >= 0 ? `+${formatCompactDollar(s.chg)}` : formatCompactDollar(s.chg)
         return `${i + 1}. ${s.sku}\n   Manufacturer: ${s.mfr} | Molecule: ${s.mol} | Category: ${s.cat}\n   TY: ${formatCompactDollar(s.tyV)} | Change: ${chgStr} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`
@@ -290,7 +279,7 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
     }
   }
 
-  return `SOTI Market Intelligence — ${formatCompact(data.state.eth.length + data.state.otc.length)} product records analysed.\n\nTry asking:\n- "What is the total pharmacy market value?"\n- "What are the top Rx SKUs?"\n- "What are the top OTC items / pack names?"\n- "Which categories are growing fastest?"\n- "Which OTC categories have value at risk?"\n\nFor Claude-powered intelligence, add your API key in the header above.`
+  return `SOTI Market Intelligence — ${formatCompact(data.state.ethSkus.length + data.state.otc.length)} product records analysed.\n\nTry asking:\n- "What is the total pharmacy market value?"\n- "What are the top Rx SKUs?"\n- "What are the top OTC items / pack names?"\n- "Which categories are growing fastest?"\n- "Which OTC categories have value at risk?"\n\nFor Claude-powered intelligence, add your API key in the header above.`
 }
 
 export function AskPage() {
@@ -401,7 +390,7 @@ export function AskPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">SOTI AI <span className="text-xs font-medium text-slate-400">State of the Industry</span></h1>
             <p className="text-[10px] text-slate-400">
-              {hasApiKey ? 'Powered by Claude' : 'Rule-based responses'} &middot; {formatCompact(data.state.eth.length + data.state.otc.length)} data points
+              {hasApiKey ? 'Powered by Claude' : 'Rule-based responses'} &middot; {formatCompact(data.state.ethSkus.length + data.state.otc.length)} data points
             </p>
           </div>
         </div>

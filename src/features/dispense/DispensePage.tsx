@@ -75,10 +75,13 @@ export function DispensePage() {
   }, [selectedCat])
   useEffect(() => { setSelectedSku(null) }, [selectedMfr])
 
+  const { loadMonthlyData } = useData()
+  useEffect(() => { loadMonthlyData() }, [loadMonthlyData])
+
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const totalUnits = useMemo(() => ethCategories.reduce((s, c) => s + c.tyUnits, 0), [ethCategories])
-  const skuCount = useMemo(() => new Set(state.eth.map(r => r.sku)).size, [state.eth])
-  const mfrCount = useMemo(() => new Set(state.eth.map(r => r.manufacturer)).size, [state.eth])
+  const skuCount = state.ethSkus.length
+  const mfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
 
   // Auto-narrative
   const narrative = useMemo(() => generateDispenseNarrative(
@@ -109,16 +112,16 @@ export function DispensePage() {
     return ethCategories.filter(c => c.category.toLowerCase().includes(q))
   }, [ethCategories, search])
 
-  // Drill-in: manufacturer breakdown for selected category
+  // Drill-in: manufacturer breakdown for selected category (from SKU data)
   const mfrBreakdown = useMemo((): ManufacturerSummary[] => {
     if (!selectedCat) return []
-    const catData = state.eth.filter(r => r.category === selectedCat)
+    const catData = state.ethSkus.filter(r => r.category === selectedCat)
     const map: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number }> = {}
     catData.forEach(r => {
       if (!map[r.manufacturer]) map[r.manufacturer] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0 }
       const m = map[r.manufacturer]!
-      if (r.period === 'APR24-MAR25') { m.tyV += r.sales; m.tyU += r.units }
-      else { m.lyV += r.sales; m.lyU += r.units }
+      m.tyV += r.tyValue; m.tyU += r.tyUnits
+      m.lyV += r.lyValue; m.lyU += r.lyUnits
     })
     const totalCatTY = Object.values(map).reduce((s, m) => s + m.tyV, 0)
     return Object.entries(map)
@@ -132,12 +135,12 @@ export function DispensePage() {
         share: totalCatTY ? (m.tyV / totalCatTY) * 100 : 0,
       }))
       .sort((a, b) => b.tyValue - a.tyValue)
-  }, [selectedCat, state.eth])
+  }, [selectedCat, state.ethSkus])
 
-  // Monthly trend for selected category
+  // Monthly trend for selected category (requires lazy-loaded monthly data)
   const monthlyTrend = useMemo(() => {
-    if (!selectedCat) return []
-    const catData = state.eth.filter(r => r.category === selectedCat)
+    if (!selectedCat || !state.ethMonthly) return []
+    const catData = state.ethMonthly.filter(r => r.category === selectedCat)
     const map: Record<number, { sales: number; units: number }> = {}
     catData.forEach(r => {
       if (!map[r.monthId]) map[r.monthId] = { sales: 0, units: 0 }
@@ -147,16 +150,16 @@ export function DispensePage() {
     return Object.entries(map)
       .map(([id, d]) => ({ monthId: parseInt(id, 10), month: `${id.slice(4)}/${id.slice(2, 4)}`, sales: d.sales, units: d.units }))
       .sort((a, b) => a.monthId - b.monthId)
-  }, [selectedCat, state.eth])
+  }, [selectedCat, state.ethMonthly])
 
-  // Top molecules for selected category
+  // Top molecules for selected category (from SKU data — TY values)
   const topMolecules = useMemo(() => {
     if (!selectedCat) return []
-    const catData = state.eth.filter(r => r.category === selectedCat && r.period === 'APR24-MAR25')
+    const catData = state.ethSkus.filter(r => r.category === selectedCat)
     const map: Record<string, number> = {}
-    catData.forEach(r => { map[r.molecule] = (map[r.molecule] || 0) + r.sales })
+    catData.forEach(r => { map[r.molecule] = (map[r.molecule] || 0) + r.tyValue })
     return Object.entries(map).map(([molecule, sales]) => ({ molecule, sales })).sort((a, b) => b.sales - a.sales).slice(0, 10)
-  }, [selectedCat, state.eth])
+  }, [selectedCat, state.ethSkus])
 
   // Category-specific auto-narrative for drill-in
   const catNarrative = useMemo(() => {
@@ -183,36 +186,22 @@ export function DispensePage() {
     }
   }, [selectedCat, mfrBreakdown])
 
-  // SKU breakdown for selected manufacturer within selected category
+  // SKU breakdown for selected manufacturer within selected category (from SKU data)
   const skuBreakdown = useMemo(() => {
     if (!selectedCat || !selectedMfr) return []
-    const catMfrData = state.eth.filter(r => r.category === selectedCat && r.manufacturer === selectedMfr)
-    const map: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number; molecule: string }> = {}
-    catMfrData.forEach(r => {
-      if (!map[r.sku]) map[r.sku] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0, molecule: r.molecule }
-      const s = map[r.sku]!
-      if (r.period === 'APR24-MAR25') { s.tyV += r.sales; s.tyU += r.units }
-      else { s.lyV += r.sales; s.lyU += r.units }
-    })
-    return Object.entries(map)
-      .map(([sku, s]) => ({ sku, molecule: s.molecule, tyValue: s.tyV, lyValue: s.lyV, growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 0 }))
+    return state.ethSkus
+      .filter(r => r.category === selectedCat && r.manufacturer === selectedMfr)
+      .map(r => ({ sku: r.sku, molecule: r.molecule, tyValue: r.tyValue, lyValue: r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 0 }))
       .sort((a, b) => b.tyValue - a.tyValue)
-  }, [selectedCat, selectedMfr, state.eth])
+  }, [selectedCat, selectedMfr, state.ethSkus])
 
-  // ── Market-wide SKU Intelligence ──
+  // ── Market-wide SKU Intelligence (from pre-aggregated SKU data) ──
   const skuInsights = useMemo(() => {
-    const map: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number; cat: string; mfr: string; mol: string }> = {}
-    state.eth.forEach(r => {
-      if (!map[r.sku]) map[r.sku] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-      const s = map[r.sku]!
-      if (r.period === 'APR24-MAR25') { s.tyV += r.sales; s.tyU += r.units }
-      else { s.lyV += r.sales; s.lyU += r.units }
-    })
-    const all = Object.entries(map).map(([sku, s]) => ({
-      sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-      tyValue: s.tyV, lyValue: s.lyV, tyUnits: s.tyU, lyUnits: s.lyU,
-      growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999,
-      absChange: s.tyV - s.lyV,
+    const all = state.ethSkus.map(r => ({
+      sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+      tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
+      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      absChange: r.tyValue - r.lyValue,
     }))
     const byValue = [...all].sort((a, b) => b.tyValue - a.tyValue)
     const growing = [...all].filter(s => s.lyValue > 5000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
@@ -228,7 +217,7 @@ export function DispensePage() {
       declining,
       pareto80: { count: p80, pct: all.length ? (p80 / all.length) * 100 : 0 },
     }
-  }, [state.eth])
+  }, [state.ethSkus])
 
   const activeSkuList = skuTab === 'value' ? skuInsights.byValue : skuTab === 'growing' ? skuInsights.growing : skuInsights.declining
 
@@ -240,10 +229,10 @@ export function DispensePage() {
     setTimeout(() => drillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300)
   }
 
-  // Per-SKU monthly trend (for clicked SKU in breakdown table)
+  // Per-SKU monthly trend (requires lazy-loaded monthly data)
   const skuMonthlyTrend = useMemo(() => {
-    if (!selectedCat || !selectedMfr || !selectedSku) return []
-    const skuData = state.eth.filter(r => r.sku === selectedSku && r.category === selectedCat)
+    if (!selectedCat || !selectedMfr || !selectedSku || !state.ethMonthly) return []
+    const skuData = state.ethMonthly.filter(r => r.sku === selectedSku && r.category === selectedCat)
     const map: Record<number, { sales: number; units: number }> = {}
     skuData.forEach(r => {
       if (!map[r.monthId]) map[r.monthId] = { sales: 0, units: 0 }
@@ -253,7 +242,7 @@ export function DispensePage() {
     return Object.entries(map)
       .map(([id, d]) => ({ monthId: parseInt(id, 10), month: `${id.slice(4)}/${id.slice(2, 4)}`, sales: d.sales, units: d.units }))
       .sort((a, b) => a.monthId - b.monthId)
-  }, [selectedCat, selectedMfr, selectedSku, state.eth])
+  }, [selectedCat, selectedMfr, selectedSku, state.ethMonthly])
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
