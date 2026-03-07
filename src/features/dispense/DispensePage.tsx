@@ -260,7 +260,7 @@ export function DispensePage() {
       <div>
         <div className="flex items-center gap-2 mb-0.5 sm:hidden">
           <span className="text-base font-extrabold tracking-tight"><span className="text-primary">SOTI</span></span>
-          <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-widest border border-slate-200 rounded px-1.5 py-0.5">Dispense</span>
+          <span className="text-[7px] text-slate-400 font-medium uppercase tracking-wider">Dispense</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">Dispense Analytics</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Prescription market — category, manufacturer & molecule drill-in</p>
@@ -680,11 +680,14 @@ export function DispensePage() {
                       <th className="text-left py-1.5 text-slate-500 font-medium w-24 hidden sm:table-cell">Molecule</th>
                       <th className="text-right py-1.5 text-slate-500 font-medium w-16 sm:w-20">Value</th>
                       <th className="text-right py-1.5 text-slate-500 font-medium w-20 hidden sm:table-cell">LY Value</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-18 hidden sm:table-cell">$ Change</th>
                       <th className="text-right py-1.5 text-slate-500 font-medium w-14 sm:w-16">Chg</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {skuBreakdown.slice(0, 20).map((s) => (
+                    {skuBreakdown.slice(0, 20).map((s) => {
+                      const absChange = s.tyValue - s.lyValue
+                      return (
                       <tr
                         key={s.sku}
                         onClick={() => setSelectedSku(selectedSku === s.sku ? null : s.sku)}
@@ -695,11 +698,15 @@ export function DispensePage() {
                         <td className="py-2.5 sm:py-1.5 text-slate-500 truncate hidden sm:table-cell">{s.molecule}</td>
                         <td className="text-right py-2.5 sm:py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
                         <td className="text-right py-2.5 sm:py-1.5 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
+                        <td className={`text-right py-2.5 sm:py-1.5 font-bold hidden sm:table-cell ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                        </td>
                         <td className={`text-right py-2.5 sm:py-1.5 font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           {s.growth >= 0 ? '+' : ''}{s.growth.toFixed(0)}%
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
                 <p className="mt-2 text-[8px] text-slate-400 italic">Click any SKU to view its monthly trend</p>
@@ -746,8 +753,8 @@ export function DispensePage() {
       )}
 
       {/* Footer */}
-      <div className="text-center py-2">
-        <p className="text-[9px] text-slate-300">Powered by <span className="font-semibold text-slate-400">NostraData</span></p>
+      <div className="text-center py-4 mt-2">
+        <p className="text-xs text-slate-400 font-medium">Powered by <span className="font-bold text-primary/70">NostraData</span></p>
       </div>
     </div>
   )

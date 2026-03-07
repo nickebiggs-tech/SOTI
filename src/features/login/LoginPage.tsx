@@ -13,13 +13,13 @@ function CentreNode() {
     <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
          style={{ animation: 'hero-fade-in 0.8s ease-out 0.3s both' }}>
       {/* Outer pulse ring */}
-      <div className="absolute w-24 h-24 rounded-full animate-pulse-glow" />
+      <div className="absolute w-28 h-28 rounded-full animate-pulse-glow" />
       {/* Glow circle */}
-      <div className="w-[72px] h-[72px] rounded-full bg-gradient-to-br from-white/20 to-white/[0.06] backdrop-blur-sm border-2 border-white/25 flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.15)]"
+      <div className="w-[88px] h-[88px] rounded-full bg-gradient-to-br from-white/20 to-white/[0.06] backdrop-blur-sm border-2 border-white/25 flex items-center justify-center shadow-[0_0_48px_rgba(255,255,255,0.18)]"
            style={{ animation: 'breathe 3s ease-in-out infinite' }}>
-        <Heart className="w-8 h-8 text-white/90" />
+        <Heart className="w-10 h-10 text-white/90" />
       </div>
-      <p className="text-[10px] font-bold text-white/70 tracking-[0.25em] uppercase mt-2.5">Patient</p>
+      <p className="text-[11px] font-bold text-white/70 tracking-[0.25em] uppercase mt-3">Patient</p>
     </div>
   )
 }
@@ -38,14 +38,14 @@ function TriangleNode({ icon, label, sublabel, color, className, delay }: Triang
   return (
     <div className={`absolute z-10 flex flex-col items-center ${className}`}
          style={{ animation: `hero-fade-in 0.8s ease-out both`, animationDelay: delay }}>
-      <div className="w-14 h-14 rounded-2xl bg-white/[0.08] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center transition-transform hover:scale-105"
-           style={{ boxShadow: `0 0 24px ${color}25` }}>
+      <div className="w-[72px] h-[72px] rounded-2xl bg-white/[0.08] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center transition-transform hover:scale-105"
+           style={{ boxShadow: `0 0 32px ${color}30` }}>
         {icon}
       </div>
-      <p className="text-[10px] font-bold tracking-[0.2em] uppercase mt-2" style={{ color: `${color}CC` }}>
+      <p className="text-[11px] font-bold tracking-[0.2em] uppercase mt-2.5" style={{ color: `${color}CC` }}>
         {label}
       </p>
-      <p className="text-[8px] text-white/30 mt-0.5">{sublabel}</p>
+      <p className="text-[9px] text-white/35 mt-0.5">{sublabel}</p>
     </div>
   )
 }
@@ -127,7 +127,7 @@ function TriangleInfographic() {
 
         {/* Supplier — top-left */}
         <TriangleNode
-          icon={<Factory className="w-6 h-6 text-blue-400/80" />}
+          icon={<Factory className="w-8 h-8 text-blue-400/80" />}
           label="Supplier"
           sublabel="Manufacturers & brands"
           color="#3B82F6"
@@ -137,7 +137,7 @@ function TriangleInfographic() {
 
         {/* Pharmacy — top-right */}
         <TriangleNode
-          icon={<Pill className="w-6 h-6 text-teal-400/80" />}
+          icon={<Pill className="w-8 h-8 text-teal-400/80" />}
           label="Pharmacy"
           sublabel="Dispensing & retail"
           color="#0D9488"
@@ -147,7 +147,7 @@ function TriangleInfographic() {
 
         {/* Data/Intelligence — bottom */}
         <TriangleNode
-          icon={<BarChart3 className="w-6 h-6 text-violet-400/80" />}
+          icon={<BarChart3 className="w-8 h-8 text-violet-400/80" />}
           label="Intelligence"
           sublabel="Data-driven insights"
           color="#7C3AED"
@@ -165,27 +165,27 @@ function TriangleInfographic() {
 /* ---- Market stat widgets ---- */
 function MarketStats() {
   const stats = [
-    { icon: <Pill className="w-4 h-4" />, value: '$20.4B', label: 'Rx Market', color: '#3B82F6' },
-    { icon: <BarChart3 className="w-4 h-4" />, value: '$9.3B', label: 'OTC Market', color: '#0D9488' },
-    { icon: <Database className="w-4 h-4" />, value: '178K+', label: 'Products', color: '#7C3AED' },
-    { icon: <TrendingUp className="w-4 h-4" />, value: '+10.8%', label: 'Rx Growth', color: '#10B981' },
+    { icon: <Pill className="w-5 h-5" />, value: '$20.4B', label: 'Rx Market', color: '#3B82F6' },
+    { icon: <BarChart3 className="w-5 h-5" />, value: '$9.3B', label: 'OTC Market', color: '#0D9488' },
+    { icon: <Database className="w-5 h-5" />, value: '178K+', label: 'Products', color: '#7C3AED' },
+    { icon: <TrendingUp className="w-5 h-5" />, value: '+10.8%', label: 'Rx Growth', color: '#10B981' },
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-2 max-w-md mx-auto w-full">
+    <div className="grid grid-cols-4 gap-3 max-w-lg mx-auto w-full">
       {stats.map((s, i) => (
         <div
           key={s.label}
-          className="bg-white/[0.06] backdrop-blur-md rounded-lg p-2.5 border border-white/[0.06] text-center"
+          className="bg-white/[0.08] backdrop-blur-md rounded-xl p-4 border border-white/[0.08] text-center"
           style={{ animation: 'hero-fade-in 0.5s ease-out both', animationDelay: `${1.0 + i * 0.12}s` }}
         >
-          <div className="w-6 h-6 rounded-md flex items-center justify-center mx-auto mb-1.5" style={{ backgroundColor: `${s.color}25`, color: s.color }}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: `${s.color}25`, color: s.color }}>
             {s.icon}
           </div>
-          <p className="text-sm font-bold text-white tracking-tight" style={{ animation: 'hero-number-in 0.4s ease-out both', animationDelay: `${1.2 + i * 0.12}s` }}>
+          <p className="text-lg font-bold text-white tracking-tight" style={{ animation: 'hero-number-in 0.4s ease-out both', animationDelay: `${1.2 + i * 0.12}s` }}>
             {s.value}
           </p>
-          <p className="text-[8px] text-white/35 mt-0.5">{s.label}</p>
+          <p className="text-[9px] text-white/45 mt-0.5 font-medium">{s.label}</p>
         </div>
       ))}
     </div>
@@ -195,11 +195,11 @@ function MarketStats() {
 /* ---- Growth pulse indicator ---- */
 function GrowthPulse() {
   return (
-    <div className="flex items-center gap-3 bg-white/[0.06] backdrop-blur-sm rounded-full px-4 py-2 border border-white/[0.08] mx-auto"
+    <div className="flex items-center gap-3 bg-white/[0.06] backdrop-blur-sm rounded-full px-5 py-2.5 border border-white/[0.08] mx-auto"
          style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.5s' }}>
-      <Activity className="w-3.5 h-3.5 text-emerald-400" />
-      <span className="text-[11px] text-white/60">Live market intelligence</span>
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      <Activity className="w-4 h-4 text-emerald-400" />
+      <span className="text-xs text-white/60 font-medium">Live market intelligence</span>
+      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
     </div>
   )
 }
@@ -209,48 +209,49 @@ function MobileHero() {
   return (
     <div className="lg:hidden bg-gradient-to-br from-hero-from via-hero-mid to-hero-to px-6 pt-14 pb-8 text-center relative overflow-hidden">
       <div className="relative z-10">
-        <div className="mb-5">
-          <h1 className="text-3xl font-extrabold text-white mb-1 tracking-tight">SOTI</h1>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-medium">State of the Industry</p>
+        <div className="mb-6">
+          <h1 className="text-4xl font-extrabold text-white mb-1.5 tracking-tight">SOTI</h1>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-white/50 font-semibold">State of the Industry</p>
+          <p className="text-[10px] text-white/35 mt-1.5 font-medium">Powered by <span className="font-bold text-white/55">NostraData</span></p>
         </div>
 
         {/* Compact triangle: Supplier — Patient — Pharmacy */}
-        <div className="flex items-center justify-center gap-4 mb-6"
+        <div className="flex items-center justify-center gap-5 mb-7"
              style={{ animation: 'hero-fade-in 0.5s ease-out 0.3s both' }}>
           <div className="flex flex-col items-center">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center border border-white/[0.08]">
-              <Factory className="w-4 h-4 text-blue-400/70" />
+            <div className="w-12 h-12 rounded-xl bg-white/[0.08] flex items-center justify-center border border-white/[0.08]">
+              <Factory className="w-5 h-5 text-blue-400/70" />
             </div>
-            <span className="text-[7px] text-white/35 mt-1 uppercase tracking-wider">Supplier</span>
+            <span className="text-[8px] text-white/40 mt-1.5 uppercase tracking-wider">Supplier</span>
           </div>
-          <div className="h-px w-5 bg-white/15" />
+          <div className="h-px w-6 bg-white/15" />
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full bg-white/[0.12] flex items-center justify-center border-2 border-white/25 animate-pulse-glow">
-              <Heart className="w-5 h-5 text-white/85" />
+            <div className="w-14 h-14 rounded-full bg-white/[0.12] flex items-center justify-center border-2 border-white/25 animate-pulse-glow">
+              <Heart className="w-6 h-6 text-white/85" />
             </div>
-            <span className="text-[8px] text-white/50 mt-1 uppercase tracking-wider font-bold">Patient</span>
+            <span className="text-[9px] text-white/50 mt-1.5 uppercase tracking-wider font-bold">Patient</span>
           </div>
-          <div className="h-px w-5 bg-white/15" />
+          <div className="h-px w-6 bg-white/15" />
           <div className="flex flex-col items-center">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center border border-white/[0.08]">
-              <Pill className="w-4 h-4 text-teal-400/70" />
+            <div className="w-12 h-12 rounded-xl bg-white/[0.08] flex items-center justify-center border border-white/[0.08]">
+              <Pill className="w-5 h-5 text-teal-400/70" />
             </div>
-            <span className="text-[7px] text-white/35 mt-1 uppercase tracking-wider">Pharmacy</span>
+            <span className="text-[8px] text-white/40 mt-1.5 uppercase tracking-wider">Pharmacy</span>
           </div>
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-1.5 max-w-[300px] mx-auto">
+        <div className="grid grid-cols-4 gap-2 max-w-[340px] mx-auto">
           {[
             { v: '$20.4B', l: 'Rx Market' },
             { v: '$9.3B', l: 'OTC' },
             { v: '178K+', l: 'Products' },
             { v: '+10.8%', l: 'Growth' },
           ].map((s, i) => (
-            <div key={s.l} className="bg-white/[0.08] rounded-lg p-1.5 border border-white/[0.06]"
+            <div key={s.l} className="bg-white/[0.08] rounded-xl p-2.5 border border-white/[0.06]"
                  style={{ animation: 'hero-fade-in 0.4s ease-out both', animationDelay: `${0.5 + i * 0.1}s` }}>
-              <p className="text-white text-xs font-bold">{s.v}</p>
-              <p className="text-white/30 text-[7px]">{s.l}</p>
+              <p className="text-white text-sm font-bold">{s.v}</p>
+              <p className="text-white/35 text-[8px] mt-0.5">{s.l}</p>
             </div>
           ))}
         </div>
@@ -291,9 +292,9 @@ export function LoginPage() {
         <div className="relative z-10 flex flex-col justify-between p-10 xl:p-16 w-full">
           {/* Top branding */}
           <div style={{ animation: 'hero-fade-in 0.8s ease-out both' }}>
-            <h1 className="text-3xl xl:text-4xl font-extrabold text-white tracking-tight">SOTI</h1>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-white/40 font-semibold mt-1">State of the Industry</p>
-            <p className="text-white/30 text-xs mt-3 max-w-xs leading-relaxed">
+            <h1 className="text-4xl xl:text-5xl font-extrabold text-white tracking-tight">SOTI</h1>
+            <p className="text-xs uppercase tracking-[0.25em] text-white/50 font-semibold mt-1.5">State of the Industry</p>
+            <p className="text-white/35 text-sm mt-3 max-w-xs leading-relaxed">
               Connecting suppliers, pharmacies, and patients through data intelligence.
             </p>
           </div>
@@ -308,10 +309,18 @@ export function LoginPage() {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-6" style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.6s' }}>
-            <p className="text-[11px] text-white/30">
-              Powered by <span className="font-semibold text-white/50">NostraData</span>
-            </p>
+          <div className="flex items-center justify-between mt-8" style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.6s' }}>
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                <Database className="w-4 h-4 text-white/50" />
+              </div>
+              <div>
+                <p className="text-[13px] text-white/60 font-medium">
+                  Powered by <span className="font-bold text-white/80">NostraData</span>
+                </p>
+                <p className="text-[9px] text-white/30">Market Intelligence Platform</p>
+              </div>
+            </div>
             <p className="text-[10px] text-white/20">v1.0</p>
           </div>
         </div>
@@ -382,8 +391,9 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-[10px] text-slate-300 mt-8">
-            SOTI v1.0 &middot; NostraData Pty Ltd
+          <p className="text-center text-[11px] text-slate-400 mt-8 font-medium">
+            SOTI &middot; State of the Industry<br />
+            <span className="text-[10px]">Powered by <span className="font-bold text-primary/60">NostraData</span></span>
           </p>
         </div>
       </div>
