@@ -1,5 +1,4 @@
 import { useAuth } from '../../auth/AuthContext'
-import { useTheme } from '../../theme/ThemeProvider'
 import { LogOut, User, Menu } from 'lucide-react'
 
 interface HeaderProps {
@@ -8,7 +7,6 @@ interface HeaderProps {
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const { user, logout } = useAuth()
-  const { livery } = useTheme()
 
   return (
     <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-3 sm:px-6">

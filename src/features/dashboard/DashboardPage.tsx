@@ -7,7 +7,7 @@ import {
 import {
   Pill, ShoppingBag, ArrowRight, ChevronDown,
   DollarSign, Package, Factory, FlaskConical, Sparkles, Target, AlertTriangle,
-  BarChart3, TrendingUp, TrendingDown, Award,
+  BarChart3,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
