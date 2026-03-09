@@ -28,7 +28,7 @@ const DATA_OUT = join(__dirname, '..', 'public', 'data')
 // --------------- helpers ---------------
 
 function parseCSV(text) {
-  const lines = text.trim().split('\n')
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n')
   const headers = parseCSVLine(lines[0])
   return lines.slice(1).map(line => {
     const vals = parseCSVLine(line)
