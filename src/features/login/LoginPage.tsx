@@ -60,7 +60,7 @@ function HeroStat({ numericValue, prefix = '', suffix = '', label, sublabel, col
         {prefix}{decimals > 0 ? count.toFixed(decimals) : count}<span className="text-3xl xl:text-4xl text-white/70">{suffix}</span>
       </p>
       {sublabel && (
-        <p className="text-[11px] text-white/40 mt-3 font-medium">{sublabel}</p>
+        <p className="text-[11px] text-white/65 mt-3 font-medium">{sublabel}</p>
       )}
     </div>
   )
@@ -110,8 +110,8 @@ function MobileHero() {
       <div className="relative z-10">
         <div className="mb-6" style={{ animation: 'hero-fade-in 0.6s ease-out both' }}>
           <h1 className="text-4xl font-extrabold text-white mb-1.5 tracking-tight">SOTI</h1>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-white/60 font-semibold">State of the Industry</p>
-          <p className="text-xs text-white/45 mt-2 max-w-[260px] mx-auto leading-relaxed">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-white/80 font-semibold">State of the Industry</p>
+          <p className="text-xs text-white/70 mt-2 max-w-[260px] mx-auto leading-relaxed">
             Market intelligence for Australian pharmacy.
           </p>
         </div>
@@ -161,14 +161,14 @@ export function LoginPage() {
           <div>
             <div style={{ animation: 'hero-fade-in 0.8s ease-out both' }}>
               <h1 className="text-4xl xl:text-5xl font-extrabold text-white tracking-tight">SOTI</h1>
-              <p className="text-xs uppercase tracking-[0.25em] text-white/60 font-semibold mt-1.5">State of the Industry</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-white/80 font-semibold mt-1.5">State of the Industry</p>
             </div>
 
             <div className="mt-6 xl:mt-8 max-w-lg" style={{ animation: 'hero-fade-in 0.7s ease-out both', animationDelay: '0.2s' }}>
-              <h2 className="text-xl xl:text-2xl font-bold text-white/95 leading-snug">
+              <h2 className="text-xl xl:text-2xl font-bold text-white leading-snug">
                 Know the market before you make the call
               </h2>
-              <p className="text-sm text-white/50 mt-2 leading-relaxed max-w-md">
+              <p className="text-sm text-white/75 mt-2 leading-relaxed max-w-md">
                 Every category. Every brand. Every molecule — all in one place.
               </p>
             </div>
@@ -196,7 +196,7 @@ export function LoginPage() {
                   <div className="w-7 h-7 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center shrink-0">
                     {p.icon}
                   </div>
-                  <span className="text-[11px] text-white/55 font-medium">{p.text}</span>
+                  <span className="text-[11px] text-white/80 font-medium">{p.text}</span>
                 </div>
               ))}
             </div>
@@ -209,13 +209,13 @@ export function LoginPage() {
                   <Database className="w-4 h-4 text-white/50" />
                 </div>
                 <div>
-                  <p className="text-[13px] text-white/60 font-medium">
-                    Powered by <span className="font-bold text-white/80">NostraData</span>
+                  <p className="text-[13px] text-white/80 font-medium">
+                    Powered by <span className="font-bold text-white">NostraData</span>
                   </p>
-                  <p className="text-[9px] text-white/30">Australia&apos;s leading pharmacy data intelligence</p>
+                  <p className="text-[9px] text-white/50">Australia&apos;s leading pharmacy data intelligence</p>
                 </div>
               </div>
-              <p className="text-[10px] text-white/20">v1.0</p>
+              <p className="text-[10px] text-white/40">v1.0</p>
             </div>
           </div>
         </div>
