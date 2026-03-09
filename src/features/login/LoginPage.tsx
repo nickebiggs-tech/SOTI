@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import {
   Lock, ArrowRight, Database,
-  Lightbulb, Target, LineChart, BarChart3,
+  Lightbulb, Target, BarChart3,
 } from 'lucide-react'
 
 /* ---- Value proposition card ---- */
