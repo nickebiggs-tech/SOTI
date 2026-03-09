@@ -123,7 +123,7 @@ export function OTCWatchPage() {
       .sort((a, b) => b.absChange - a.absChange)
       .slice(0, 12)
       .map(c => ({
-        name: c.category.length > 22 ? c.category.slice(0, 20) + '...' : c.category,
+        name: c.category,
         fullName: c.category,
         value: c.absChange,
         growth: c.valueGrowth,
@@ -135,12 +135,12 @@ export function OTCWatchPage() {
   const waterfallData = useMemo(() => {
     const sorted = [...watchData.categories].filter(c => c.lyValue > 5000).sort((a, b) => b.absChange - a.absChange)
     const topGainers = sorted.filter(c => c.absChange > 0).slice(0, 5).map(c => ({
-      name: c.category.length > 18 ? c.category.slice(0, 16) + '...' : c.category,
+      name: c.category,
       gain: c.absChange,
       loss: 0,
     }))
     const topLosers = sorted.filter(c => c.absChange < 0).slice(-5).reverse().map(c => ({
-      name: c.category.length > 18 ? c.category.slice(0, 16) + '...' : c.category,
+      name: c.category,
       gain: 0,
       loss: c.absChange,
     }))
@@ -224,11 +224,11 @@ export function OTCWatchPage() {
           <p className="text-[9px] text-slate-500 mt-1">Absolute $ value change by category — green = growth, red = decline</p>
         </div>
         <div className="p-3 sm:p-5">
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={380}>
             <BarChart data={waterfallData} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={110} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={160} />
               <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
               <Bar dataKey="gain" name="Value Gained" fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
               <Bar dataKey="loss" name="Value Lost" fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
@@ -247,11 +247,11 @@ export function OTCWatchPage() {
           </div>
         </div>
         <div className="p-3 sm:p-5">
-          <ResponsiveContainer width="100%" height={340}>
+          <ResponsiveContainer width="100%" height={420}>
             <BarChart data={catChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={130} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={170} />
               <Tooltip
                 formatter={(v) => formatCompactDollar(v as number)}
                 labelFormatter={(label) => {

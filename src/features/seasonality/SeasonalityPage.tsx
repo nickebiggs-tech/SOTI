@@ -604,7 +604,7 @@ export function SeasonalityPage() {
               })
             })}
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="monthLabel" tick={{ fontSize: 8 }} stroke="#94a3b8" interval={2} />
+            <XAxis dataKey="monthLabel" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={2} />
             <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
             <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
             <Line type="monotone" dataKey="cold-flu" name="Cold & Flu" stroke="#2563EB" strokeWidth={2} dot={{ r: 1.5 }} />
@@ -709,7 +709,7 @@ export function SeasonalityPage() {
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={categoryMonthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="month" tick={{ fontSize: 8 }} stroke="#94a3b8" interval={2} />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={2} />
                 <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
                 <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
                 <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />

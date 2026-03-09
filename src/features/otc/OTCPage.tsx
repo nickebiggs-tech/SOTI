@@ -542,7 +542,7 @@ export function OTCPage() {
                 <BarChart data={mfrBreakdown.slice(0, 10)} layout="vertical" margin={{ left: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                  <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 8 }} stroke="#94a3b8" width={100} />
+                  <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={130} />
                   <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
                   <Bar dataKey="tyValue" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out">
                     {mfrBreakdown.slice(0, 10).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}

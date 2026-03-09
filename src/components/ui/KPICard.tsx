@@ -26,7 +26,7 @@ export function KPICard({ title, value, delta, deltaLabel, icon, className }: KP
           </div>
         )}
       </div>
-      <p className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight animate-number-pop">{value}</p>
+      <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight animate-number-pop animate-value-glow">{value}</p>
       {delta !== undefined && (
         <div className="flex items-center gap-1.5 mt-2 animate-fade-in" style={{ animationDelay: '200ms' }}>
           <div className={cn(
