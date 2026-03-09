@@ -140,6 +140,36 @@
   to { opacity: 1; -webkit-transform: translateY(0) scale(1); transform: translateY(0) scale(1); }
 }
 
+/* Hero stat card entrance — scale + lift + glow */
+@keyframes hero-stat-in {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateY(30px) scale(0.88);
+    transform: translateY(30px) scale(0.88);
+  }
+  60% {
+    -webkit-transform: translateY(-4px) scale(1.02);
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    -webkit-transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Hero stat value glow pulse after count-up */
+@keyframes hero-value-glow {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  50% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.25), 0 0 40px rgba(255, 255, 255, 0.1); }
+}
+
+/* Shimmer sweep across hero stat bar */
+@keyframes hero-bar-shimmer {
+  0% { -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+  100% { -webkit-transform: translateX(300%); transform: translateX(300%); }
+}
+
 /* Orbit animations for login page */
 @keyframes orbit {
   from { -webkit-transform: rotate(0deg); transform: rotate(0deg); }
@@ -610,6 +640,42 @@
     font-size: 16px;
     padding: 12px;
   }
+}
+
+/* =============================================
+   HERO STAT CARDS (Login page)
+   ============================================= */
+
+.hero-stat-card {
+  -webkit-transition: -webkit-transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.hero-stat-card:hover {
+  -webkit-transform: translateY(-4px) scale(1.02);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.hero-stat-value {
+  -webkit-animation: hero-value-glow 3s ease-in-out 2.5s infinite;
+  animation: hero-value-glow 3s ease-in-out 2.5s infinite;
+}
+
+.hero-stat-bar {
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+}
+.hero-stat-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  -webkit-animation: hero-bar-shimmer 2.5s ease-in-out 1.5s infinite;
+  animation: hero-bar-shimmer 2.5s ease-in-out 1.5s infinite;
 }
 
 /* Glass morphism (Safari-safe with -webkit prefix) */
