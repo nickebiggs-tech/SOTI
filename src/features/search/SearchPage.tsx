@@ -674,7 +674,7 @@ export function SearchPage() {
                 <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="#94a3b8" />
                 <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
                 <Tooltip
-                  formatter={(v: number) => formatCompactDollar(v)}
+                  formatter={(v) => formatCompactDollar(v as number)}
                   labelStyle={{ fontSize: 11, fontWeight: 600 }}
                   contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}
                 />

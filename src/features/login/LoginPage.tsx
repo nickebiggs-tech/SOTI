@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import {
-  Lock, ArrowRight, Pill, TrendingUp, BarChart3, Database,
+  Lock, ArrowRight, Database,
   Activity, Lightbulb, Target, LineChart,
 } from 'lucide-react'
 
