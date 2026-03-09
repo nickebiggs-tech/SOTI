@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import {
   BarChart, Bar, Cell, LineChart, Line, Legend,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import {
   Search, X, Plus, Pill, ShoppingBag, GitCompareArrows,
-  TrendingUp, TrendingDown, ChevronDown, Sparkles, ArrowUpDown, Layers, Calendar, ListPlus, HelpCircle,
+  TrendingUp, TrendingDown, ChevronDown, ChevronRight, Sparkles, ArrowUpDown, Layers, Calendar, ListPlus, HelpCircle,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
@@ -82,6 +82,7 @@ export function SearchPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [groupByBrand, setGroupByBrand] = useState(false)
   const [radarHelpOpen, setRadarHelpOpen] = useState(false)
+  const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set())
 
   // Load monthly data when Rx products are selected (for trend chart)
   useEffect(() => {
@@ -193,6 +194,24 @@ export function SearchPage() {
 
     return filtered.slice(0, 50)
   }, [search, groupedItems, sortField, sortDir])
+
+  // Look up individual SKUs for a grouped brand
+  const getSkusForBrand = useCallback((item: SearchItem): SearchItem[] => {
+    if (!item.skuNames || item.skuNames.length <= 1) return []
+    const nameSet = new Set(item.skuNames.map(n => n.toUpperCase()))
+    return allItems
+      .filter(a => nameSet.has(a.name.toUpperCase()))
+      .sort((a, b) => b.tyValue - a.tyValue)
+  }, [allItems])
+
+  const toggleBrandExpand = useCallback((id: string) => {
+    setExpandedBrands(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   const toggleSelect = useCallback((item: SearchItem) => {
     setSelected(prev => {
@@ -892,30 +911,65 @@ export function SearchPage() {
                 </tr>
               </thead>
               <tbody>
-                {selected.map((s, i) => (
-                  <tr key={s.id} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 sm:px-5 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                        <span className="font-semibold text-slate-800 max-w-[200px] truncate">{s.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2.5 text-slate-500 max-w-[120px] truncate">{s.category}</td>
-                    <td className="px-2 py-2.5 text-slate-500 max-w-[120px] truncate">{s.manufacturer}</td>
-                    <td className="px-2 py-2.5 text-right font-semibold text-slate-800">{formatCompactDollar(s.tyValue)}</td>
-                    <td className="px-2 py-2.5 text-right text-slate-500">{formatCompactDollar(s.lyValue)}</td>
-                    <td className={`px-2 py-2.5 text-right font-bold ${s.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {s.absChange >= 0 ? '+' : ''}{formatCompactDollar(s.absChange)}
-                    </td>
-                    <td className={`px-2 py-2.5 text-right font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {s.growth >= 900 ? 'NEW' : formatDelta(s.growth)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-slate-600">{formatCompact(s.tyUnits)}</td>
-                    <td className={`px-2 py-2.5 text-right font-semibold ${s.unitGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {formatDelta(s.unitGrowth)}
-                    </td>
-                  </tr>
-                ))}
+                {selected.map((s, i) => {
+                  const hasSubs = s.skuNames && s.skuNames.length > 1
+                  const isExpanded = expandedBrands.has(s.id)
+                  const subSkus = hasSubs && isExpanded ? getSkusForBrand(s) : []
+                  return (
+                    <React.Fragment key={s.id}>
+                      <tr
+                        className={`border-t border-slate-100 hover:bg-slate-50 ${hasSubs ? 'cursor-pointer' : ''}`}
+                        onClick={hasSubs ? () => toggleBrandExpand(s.id) : undefined}
+                      >
+                        <td className="px-3 sm:px-5 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                            <span className="font-semibold text-slate-800 max-w-[200px] truncate">{s.name}</span>
+                            {hasSubs && (
+                              <ChevronRight className={`w-3 h-3 text-slate-400 transition-transform duration-200 shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2.5 text-slate-500 max-w-[120px] truncate">{s.category}</td>
+                        <td className="px-2 py-2.5 text-slate-500 max-w-[120px] truncate">{s.manufacturer}</td>
+                        <td className="px-2 py-2.5 text-right font-semibold text-slate-800">{formatCompactDollar(s.tyValue)}</td>
+                        <td className="px-2 py-2.5 text-right text-slate-500">{formatCompactDollar(s.lyValue)}</td>
+                        <td className={`px-2 py-2.5 text-right font-bold ${s.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {s.absChange >= 0 ? '+' : ''}{formatCompactDollar(s.absChange)}
+                        </td>
+                        <td className={`px-2 py-2.5 text-right font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {s.growth >= 900 ? 'NEW' : formatDelta(s.growth)}
+                        </td>
+                        <td className="px-2 py-2.5 text-right text-slate-600">{formatCompact(s.tyUnits)}</td>
+                        <td className={`px-2 py-2.5 text-right font-semibold ${s.unitGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {formatDelta(s.unitGrowth)}
+                        </td>
+                      </tr>
+                      {/* SKU drill-down rows */}
+                      {isExpanded && subSkus.map(sub => (
+                        <tr key={sub.id} className="bg-slate-50/50 border-t border-slate-50">
+                          <td className="pl-8 sm:pl-12 pr-2 py-1.5">
+                            <span className="text-[8px] sm:text-[9px] text-slate-600 truncate block max-w-[200px]">{sub.name}</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-[8px] sm:text-[9px] text-slate-400 truncate">{sub.category}</td>
+                          <td className="px-2 py-1.5 text-[8px] sm:text-[9px] text-slate-400 truncate">{sub.manufacturer}</td>
+                          <td className="px-2 py-1.5 text-right text-[8px] sm:text-[9px] text-slate-600">{formatCompactDollar(sub.tyValue)}</td>
+                          <td className="px-2 py-1.5 text-right text-[8px] sm:text-[9px] text-slate-400">{formatCompactDollar(sub.lyValue)}</td>
+                          <td className={`px-2 py-1.5 text-right text-[8px] sm:text-[9px] font-semibold ${sub.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {sub.absChange >= 0 ? '+' : ''}{formatCompactDollar(sub.absChange)}
+                          </td>
+                          <td className={`px-2 py-1.5 text-right text-[8px] sm:text-[9px] font-semibold ${sub.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {sub.growth >= 900 ? 'NEW' : formatDelta(sub.growth)}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-[8px] sm:text-[9px] text-slate-500">{formatCompact(sub.tyUnits)}</td>
+                          <td className={`px-2 py-1.5 text-right text-[8px] sm:text-[9px] ${sub.unitGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {formatDelta(sub.unitGrowth)}
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  )
+                })}
                 {/* Totals row */}
                 {selected.length > 1 && (
                   <tr className="border-t-2 border-slate-200 bg-slate-50 font-bold">
