@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import {
   Lock, ArrowRight, Database,
-  Activity, Lightbulb, Target, LineChart,
+  Lightbulb, Target, LineChart, BarChart3,
 } from 'lucide-react'
 
 /* ---- Value proposition card ---- */
@@ -172,9 +172,9 @@ export function LoginPage() {
               delay="0.7s"
             />
             <ValueProp
-              icon={<LineChart className="w-5 h-5 text-emerald-400/80" />}
-              title="Live Market Data"
-              desc="Track $30B+ in pharmacy sales across 178K+ products with monthly trend analysis."
+              icon={<BarChart3 className="w-5 h-5 text-emerald-400/80" />}
+              title="Unmatched Market Depth"
+              desc="$30B+ in pharmacy sales across 178K+ products — the most comprehensive view of Australian pharmacy available."
               delay="0.9s"
             />
           </div>
@@ -189,9 +189,8 @@ export function LoginPage() {
             </div>
 
             <div className="flex items-center gap-3 mt-2" style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.4s' }}>
-              <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[11px] text-white/45 font-medium">Live market intelligence</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <Database className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-[11px] text-white/45 font-medium">15 years of pharmacy market intelligence</span>
             </div>
 
             {/* Footer */}
