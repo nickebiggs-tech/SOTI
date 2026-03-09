@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import {
   Search, X, Plus, Pill, ShoppingBag, GitCompareArrows,
-  TrendingUp, TrendingDown, ChevronDown, Sparkles, ArrowUpDown, Layers, Calendar,
+  TrendingUp, TrendingDown, ChevronDown, Sparkles, ArrowUpDown, Layers, Calendar, ListPlus, HelpCircle,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
@@ -81,6 +81,7 @@ export function SearchPage() {
   const [sortField, setSortField] = useState<SortField>('tyValue')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [groupByBrand, setGroupByBrand] = useState(false)
+  const [radarHelpOpen, setRadarHelpOpen] = useState(false)
 
   // Load monthly data when Rx products are selected (for trend chart)
   useEffect(() => {
@@ -209,6 +210,17 @@ export function SearchPage() {
   const clearAll = useCallback(() => {
     setSelected([])
   }, [])
+
+  const addAllResults = useCallback(() => {
+    setSelected(prev => {
+      const remaining = 8 - prev.length
+      if (remaining <= 0) return prev
+      const existingIds = new Set(prev.map(s => s.id))
+      const toAdd = results.filter(r => !existingIds.has(r.id)).slice(0, remaining)
+      if (toAdd.length === 0) return prev
+      return [...prev, ...toAdd]
+    })
+  }, [results])
 
   const handleSort = useCallback((field: SortField) => {
     setSortField(prev => {
@@ -485,9 +497,49 @@ export function SearchPage() {
           </div>
 
           {search.length >= 2 && (
-            <p className="text-[10px] text-slate-400">{results.length} result{results.length !== 1 ? 's' : ''} found{results.length === 50 ? ' (showing first 50)' : ''}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] text-slate-400">{results.length} result{results.length !== 1 ? 's' : ''} found{results.length === 50 ? ' (showing first 50)' : ''}</p>
+              {results.length > 0 && (
+                <button
+                  onClick={addAllResults}
+                  disabled={selected.length >= 8 || results.every(r => selected.some(s => s.id === r.id))}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-all
+                    bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 hover:border-blue-300
+                    disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50 disabled:hover:border-blue-200"
+                >
+                  <ListPlus className="w-3 h-3" />
+                  Add All ({Math.min(results.filter(r => !selected.some(s => s.id === r.id)).length, 8 - selected.length)})
+                </button>
+              )}
+            </div>
           )}
         </div>
+
+        {/* Brand grouping hint — show when multiple SKUs of same brand are visible and not already grouped */}
+        {results.length > 1 && !groupByBrand && (() => {
+          const brands = new Map<string, number>()
+          for (const r of results) {
+            const b = extractBrandName(r.name)
+            brands.set(b, (brands.get(b) || 0) + 1)
+          }
+          const multiBrands = Array.from(brands.entries()).filter(([, c]) => c > 1)
+          if (multiBrands.length === 0) return null
+          const example = multiBrands[0]!
+          return (
+            <div className="mx-3 sm:mx-5 mb-1">
+              <button
+                onClick={toggleGroupByBrand}
+                className="w-full text-left text-[10px] text-blue-600 bg-blue-50 rounded-lg px-2.5 py-2 border border-blue-100 hover:bg-blue-100 transition-colors flex items-center gap-1.5"
+              >
+                <Layers className="w-3 h-3 shrink-0" />
+                <span>
+                  <strong>Tip:</strong> {example[1]} SKUs found for {example[0]}{multiBrands.length > 1 ? ` and ${multiBrands.length - 1} other brand${multiBrands.length > 2 ? 's' : ''}` : ''}.
+                  Click here to <strong>Group by Brand</strong> and compare aggregated brand totals (e.g. all Mounjaro vs all Ozempic).
+                </span>
+              </button>
+            </div>
+          )
+        })()}
 
         {/* Results table */}
         {results.length > 0 && (
@@ -714,12 +766,57 @@ export function SearchPage() {
       {selected.length >= 2 && radarData.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '200ms' }}>
           <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <GitCompareArrows className="w-4 h-4 text-blue-600 shrink-0" />
-              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Multi-Dimensional Comparison</h3>
-              <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Normalised</span>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <GitCompareArrows className="w-4 h-4 text-blue-600 shrink-0" />
+                  <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Multi-Dimensional Comparison</h3>
+                  <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Normalised</span>
+                </div>
+                <p className="text-[9px] text-slate-500 mt-1">Relative comparison across value, volume, $ change, and growth rate (normalised to 100)</p>
+              </div>
+              <button
+                onClick={() => setRadarHelpOpen(v => !v)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-semibold transition-all shrink-0 ${
+                  radarHelpOpen
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-white border-slate-200 text-slate-500 hover:border-blue-200 hover:bg-blue-50'
+                }`}
+              >
+                <HelpCircle className="w-3 h-3" />
+                How to read
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${radarHelpOpen ? 'rotate-180' : ''}`} />
+              </button>
             </div>
-            <p className="text-[9px] text-slate-500 mt-1">Relative comparison across value, volume, $ change, and growth rate (normalised to 100)</p>
+            {radarHelpOpen && (
+              <div className="mt-3 bg-white rounded-lg border border-slate-200 p-3 space-y-2 text-[10px] text-slate-600 leading-relaxed">
+                <p className="font-bold text-slate-800 text-[11px]">How to read the radar chart</p>
+                <p>
+                  Each product is drawn as a coloured shape on four axes. The <strong>larger the shape</strong>, the stronger that product performs across all dimensions. Values are <strong>normalised to 100</strong> — the best performer on each axis reaches the outer edge.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                  <div className="bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
+                    <p className="font-bold text-slate-700">TY Value</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">This Year sales value ($). Higher = more total revenue in the current period.</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
+                    <p className="font-bold text-slate-700">Volume</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">Total units dispensed/sold this year. Higher = more packs moving through pharmacy.</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
+                    <p className="font-bold text-slate-700">$ Change</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">Absolute dollar change year-on-year. Larger shape = bigger absolute gain (or loss).</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg px-2.5 py-2 border border-slate-100">
+                    <p className="font-bold text-slate-700">Growth %</p>
+                    <p className="text-[9px] text-slate-500 mt-0.5">Percentage growth year-on-year. A small product can score high here with strong relative growth.</p>
+                  </div>
+                </div>
+                <p className="text-[9px] text-slate-400 italic mt-1">
+                  Tip: A product dominating all four corners is a market leader with strong momentum. A product strong on Growth % but weak on TY Value is a fast-growing challenger. Compare shapes to spot relative strengths.
+                </p>
+              </div>
+            )}
           </div>
           <div className="p-3 sm:p-5 flex justify-center">
             <ResponsiveContainer width="100%" height={350}>
