@@ -110,7 +110,7 @@ ethRaw.forEach(r => {
     }
   }
   const s = skuMap[key]
-  if (r['Period'] === 'APR24-MAR25') {
+  if (r['Period'] === 'OCT24-SEP25') {
     s.tv += num(r['Sales'])
     s.tu += num(r['Units'])
   } else {
