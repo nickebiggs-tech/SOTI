@@ -1,12 +1,12 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import {
-  BarChart, Bar, Cell,
+  BarChart, Bar, Cell, LineChart, Line, Legend,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts'
 import {
   Search, X, Plus, Pill, ShoppingBag, GitCompareArrows,
-  TrendingUp, TrendingDown, ChevronDown, Sparkles, ArrowUpDown,
+  TrendingUp, TrendingDown, ChevronDown, Sparkles, ArrowUpDown, Layers, Calendar,
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
@@ -31,16 +31,63 @@ interface SearchItem {
   absChange: number
   growth: number
   unitGrowth: number
+  skuCount?: number          // populated when grouped
+  skuNames?: string[]        // list of individual SKU names in this group
+}
+
+/** Extract brand name from a SKU name for grouping.
+ *  Strategy: take leading words that are NOT a dosage form, strength, or pack size.
+ *  e.g. "MOUNJARO KWIKPEN PREFILLED PEN 15 MG 2.4 ML" → "MOUNJARO"
+ *  e.g. "OZEMPIC PREFILLED PEN 0.25 MG 1.5 ML" → "OZEMPIC"
+ *  e.g. "NUROFEN ZAVANCE CAPLET 256 MG 24" → "NUROFEN ZAVANCE"
+ */
+function extractBrandName(name: string): string {
+  const upper = name.toUpperCase()
+  // Common dosage form words that signal end of brand name
+  const formWords = new Set([
+    'TABLET', 'TABLETS', 'TAB', 'CAPSULE', 'CAPSULES', 'CAP', 'CAPLET', 'CAPLETS',
+    'AMPOULE', 'AMPOULES', 'VIAL', 'VIALS', 'PREFILLED', 'PEN', 'KWIKPEN',
+    'INJECTION', 'SOLUTION', 'SUSPENSION', 'SYRUP', 'CREAM', 'OINTMENT', 'GEL',
+    'INHALER', 'SPRAY', 'DROPS', 'PATCH', 'SUPPOSITORY', 'POWDER',
+    'SACHET', 'SACHETS', 'LIQUID', 'ORAL', 'IV', 'INFUSION',
+    'BOTTLE', 'PACK', 'BOX', 'STRIP', 'BLISTER',
+    'MODIFIED', 'RELEASE', 'EXTENDED', 'SUSTAINED', 'DELAYED',
+    'FILMCOATED', 'FILM-COATED', 'COATED', 'CHEWABLE', 'DISPERSIBLE',
+    'EFFERVESCENT', 'SOLUBLE', 'SOFTGEL',
+  ])
+
+  const words = upper.split(/\s+/)
+  const brand: string[] = []
+
+  for (const w of words) {
+    // Stop at form words, numeric values (strengths), or "MG/ML/MCG/G"
+    if (formWords.has(w)) break
+    if (/^\d/.test(w)) break
+    if (/^(MG|ML|MCG|G|IU|UNIT|UNITS|X)$/i.test(w)) break
+    brand.push(w)
+  }
+
+  // Return at least the first word
+  if (brand.length === 0) return words[0] || name
+  return brand.join(' ')
 }
 
 export function SearchPage() {
-  const { state, ethCategories, otcCategories, ethTotalTY, otcTotalTY } = useData()
+  const { state, ethCategories, otcCategories, ethTotalTY, otcTotalTY, loadMonthlyData } = useData()
   const [market, setMarket] = useState<MarketType>('rx')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<SearchItem[]>([])
   const [narrativeOpen, setNarrativeOpen] = useState(true)
   const [sortField, setSortField] = useState<SortField>('tyValue')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [groupByBrand, setGroupByBrand] = useState(false)
+
+  // Load monthly data when Rx products are selected (for trend chart)
+  useEffect(() => {
+    if (market === 'rx' && selected.length > 0) {
+      loadMonthlyData()
+    }
+  }, [market, selected.length, loadMonthlyData])
 
   // Build unified search items from data
   const allItems = useMemo((): SearchItem[] => {
@@ -86,14 +133,49 @@ export function SearchPage() {
     }
   }, [market, state.ethSkus, state.otc])
 
+  // Grouped items — aggregate SKUs by brand name
+  const groupedItems = useMemo((): SearchItem[] => {
+    if (!groupByBrand) return allItems
+    const groups = new Map<string, { items: SearchItem[]; brand: string }>()
+    for (const item of allItems) {
+      const brand = extractBrandName(item.name)
+      const existing = groups.get(brand)
+      if (existing) {
+        existing.items.push(item)
+      } else {
+        groups.set(brand, { items: [item], brand })
+      }
+    }
+    return Array.from(groups.values()).map(({ items, brand }) => {
+      const tyValue = items.reduce((s, i) => s + i.tyValue, 0)
+      const lyValue = items.reduce((s, i) => s + i.lyValue, 0)
+      const tyUnits = items.reduce((s, i) => s + i.tyUnits, 0)
+      const lyUnits = items.reduce((s, i) => s + i.lyUnits, 0)
+      const absChange = tyValue - lyValue
+      const growth = lyValue > 0 ? ((tyValue - lyValue) / lyValue) * 100 : (tyValue > 0 ? 999 : 0)
+      const unitGrowth = lyUnits > 0 ? ((tyUnits - lyUnits) / lyUnits) * 100 : 0
+      return {
+        id: `grp-${brand}`,
+        name: `${brand} (${items.length} SKU${items.length > 1 ? 's' : ''})`,
+        category: items[0]!.category,
+        manufacturer: items[0]!.manufacturer,
+        molecule: items[0]!.molecule,
+        tyValue, lyValue, tyUnits, lyUnits,
+        absChange, growth, unitGrowth,
+        skuCount: items.length,
+        skuNames: items.map(i => i.name),
+      }
+    })
+  }, [allItems, groupByBrand])
+
   // Filtered + sorted results
   const results = useMemo(() => {
     if (!search || search.length < 2) return []
     const q = search.toLowerCase()
     const tokens = q.split(/\s+/).filter(Boolean)
 
-    let filtered = allItems.filter(item => {
-      const searchable = `${item.name} ${item.category} ${item.manufacturer} ${item.molecule || ''}`.toLowerCase()
+    let filtered = groupedItems.filter(item => {
+      const searchable = `${item.name} ${item.category} ${item.manufacturer} ${item.molecule || ''} ${(item.skuNames || []).join(' ')}`.toLowerCase()
       return tokens.every(t => searchable.includes(t))
     })
 
@@ -109,7 +191,7 @@ export function SearchPage() {
     })
 
     return filtered.slice(0, 50)
-  }, [search, allItems, sortField, sortDir])
+  }, [search, groupedItems, sortField, sortDir])
 
   const toggleSelect = useCallback((item: SearchItem) => {
     setSelected(prev => {
@@ -146,6 +228,12 @@ export function SearchPage() {
     setSearch('')
   }, [])
 
+  // Toggle group by brand — clears selection since IDs change
+  const toggleGroupByBrand = useCallback(() => {
+    setGroupByBrand(prev => !prev)
+    setSelected([])
+  }, [])
+
   // Comparison data
   const comparisonChart = useMemo(() => {
     if (selected.length === 0) return []
@@ -167,6 +255,55 @@ export function SearchPage() {
       color: COLORS[i % COLORS.length],
     }))
   }, [selected])
+
+  // Monthly trend data (Rx only) — build from ethMonthly when loaded
+  const trendData = useMemo(() => {
+    if (market !== 'rx' || selected.length === 0 || !state.ethMonthly) return []
+
+    // Build a set of SKU names we need to match
+    const skuSets = selected.map(s => {
+      if (s.skuNames && s.skuNames.length > 0) {
+        return new Set(s.skuNames.map(n => n.toUpperCase()))
+      }
+      return new Set([s.name.toUpperCase()])
+    })
+
+    // Gather all months
+    const monthMap = new Map<number, Record<string, number>>()
+    const monthLabels = new Map<number, string>()
+
+    for (const rec of state.ethMonthly) {
+      const skuUpper = rec.sku.toUpperCase()
+      for (let si = 0; si < skuSets.length; si++) {
+        if (skuSets[si]!.has(skuUpper)) {
+          if (!monthMap.has(rec.monthId)) {
+            monthMap.set(rec.monthId, {})
+            monthLabels.set(rec.monthId, rec.date)
+          }
+          const entry = monthMap.get(rec.monthId)!
+          entry[`p${si}`] = (entry[`p${si}`] || 0) + rec.sales
+        }
+      }
+    }
+
+    // Sort by monthId
+    const sorted = Array.from(monthMap.entries()).sort((a, b) => a[0] - b[0])
+    return sorted.map(([monthId, values]) => {
+      const dateStr = monthLabels.get(monthId) || ''
+      // Parse "1/04/2023" → "Apr 23"
+      let label = dateStr
+      try {
+        const parts = dateStr.split('/')
+        if (parts.length === 3) {
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          const m = parseInt(parts[1]!, 10)
+          const y = parts[2]!.slice(-2)
+          label = `${months[m - 1]} ${y}`
+        }
+      } catch { /* use raw */ }
+      return { month: label, monthId, ...values }
+    })
+  }, [market, selected, state.ethMonthly])
 
   // Radar chart for multi-dimensional comparison (normalised 0-100)
   const radarData = useMemo(() => {
@@ -200,11 +337,13 @@ export function SearchPage() {
   // Generate comparison narrative
   const narrative = useMemo(() => {
     if (selected.length === 0) return []
+    const label = groupByBrand ? 'brand' : (market === 'rx' ? 'SKU' : 'item')
     if (selected.length === 1) {
       const s = selected[0]!
       const dir = s.growth >= 0 ? 'grew' : 'declined'
+      const skuNote = s.skuCount && s.skuCount > 1 ? ` (aggregated across ${s.skuCount} SKUs)` : ''
       return [
-        `${s.name} ${dir} ${Math.abs(s.growth).toFixed(1)}% YoY to ${formatCompactDollar(s.tyValue)}, ${s.absChange >= 0 ? 'adding' : 'losing'} ${formatCompactDollar(Math.abs(s.absChange))} in absolute value. It sits in the ${s.category} category under ${s.manufacturer}.`,
+        `${s.name}${skuNote} ${dir} ${Math.abs(s.growth).toFixed(1)}% YoY to ${formatCompactDollar(s.tyValue)}, ${s.absChange >= 0 ? 'adding' : 'losing'} ${formatCompactDollar(Math.abs(s.absChange))} in absolute value. It sits in the ${s.category} category under ${s.manufacturer}.`,
       ]
     }
 
@@ -215,7 +354,7 @@ export function SearchPage() {
     const fastestGrower = [...selected].sort((a, b) => b.growth - a.growth)[0]!
 
     lines.push(
-      `Comparing ${selected.length} ${market === 'rx' ? 'SKUs' : 'items'} with combined TY value of ${formatCompactDollar(totalTY)}. ${leader.name} leads by value at ${formatCompactDollar(leader.tyValue)}.`
+      `Comparing ${selected.length} ${label}s${groupByBrand ? ' (aggregated)' : ''} with combined TY value of ${formatCompactDollar(totalTY)}. ${leader.name} leads by value at ${formatCompactDollar(leader.tyValue)}.`
     )
 
     if (fastestGrower.id !== leader.id) {
@@ -233,13 +372,13 @@ export function SearchPage() {
     }
 
     return lines
-  }, [selected, market])
+  }, [selected, market, groupByBrand])
 
   const marketLabel = market === 'rx' ? 'Rx' : 'OTC'
-  const itemLabel = market === 'rx' ? 'SKU' : 'Item'
+  const itemLabel = groupByBrand ? 'Brand' : (market === 'rx' ? 'SKU' : 'Item')
   const catCount = market === 'rx' ? ethCategories.length : otcCategories.length
   const totalMarket = market === 'rx' ? ethTotalTY : otcTotalTY
-  const totalItems = allItems.length
+  const totalItems = groupedItems.length
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -276,8 +415,8 @@ export function SearchPage() {
         </div>
 
         <div className="px-3 sm:px-5 py-3 space-y-3">
-          {/* Market toggle */}
-          <div className="flex gap-2">
+          {/* Market toggle + Group toggle */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => switchMarket('rx')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-semibold transition-all ${
@@ -300,7 +439,27 @@ export function SearchPage() {
               <ShoppingBag className="w-3.5 h-3.5" />
               Consumer Health (OTC)
             </button>
+
+            <div className="h-5 w-px bg-slate-200 mx-1" />
+
+            <button
+              onClick={toggleGroupByBrand}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+                groupByBrand
+                  ? 'bg-violet-600 border-violet-600 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-500 hover:border-violet-200 hover:bg-violet-50'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Group by Brand
+            </button>
           </div>
+
+          {groupByBrand && (
+            <p className="text-[10px] text-violet-600 bg-violet-50 rounded-lg px-2.5 py-1.5 border border-violet-100">
+              SKUs are aggregated by brand name — e.g. all Mounjaro strengths combined into one entry. Compare brands head-to-head.
+            </p>
+          )}
 
           {/* Search input */}
           <div className="relative">
@@ -309,8 +468,12 @@ export function SearchPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={market === 'rx'
-                ? 'Search by SKU, molecule, manufacturer, or category... e.g. "Ozempic" or "semaglutide"'
-                : 'Search by item name, manufacturer, or category... e.g. "Nurofen" or "Panadol"'
+                ? (groupByBrand
+                    ? 'Search brands... e.g. "Mounjaro" or "Ozempic" (all SKUs aggregated)'
+                    : 'Search by SKU, molecule, manufacturer, or category... e.g. "Ozempic" or "semaglutide"')
+                : (groupByBrand
+                    ? 'Search brands... e.g. "Nurofen" or "Panadol" (all packs aggregated)'
+                    : 'Search by item name, manufacturer, or category... e.g. "Nurofen" or "Panadol"')
               }
               className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all"
             />
@@ -365,7 +528,12 @@ export function SearchPage() {
                       {isSelected && <Plus className="w-3 h-3 text-white rotate-45" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] sm:text-[11px] text-slate-800 font-medium truncate">{item.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] sm:text-[11px] text-slate-800 font-medium truncate">{item.name}</p>
+                        {item.skuCount && item.skuCount > 1 && (
+                          <span className="text-[7px] bg-violet-100 text-violet-600 font-bold px-1 py-0.5 rounded shrink-0">{item.skuCount} SKUs</span>
+                        )}
+                      </div>
                       <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">{item.manufacturer} · {item.category}{item.molecule ? ` · ${item.molecule}` : ''}</p>
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-semibold text-slate-700 w-20 sm:w-24 text-right shrink-0">{formatCompactDollar(item.tyValue)}</span>
@@ -385,7 +553,7 @@ export function SearchPage() {
         {search.length >= 2 && results.length === 0 && (
           <div className="px-5 py-8 text-center border-t border-slate-100">
             <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-xs text-slate-400">No {market === 'rx' ? 'SKUs' : 'items'} matching "{search}"</p>
+            <p className="text-xs text-slate-400">No {market === 'rx' ? 'SKUs' : 'items'} matching &ldquo;{search}&rdquo;</p>
             <p className="text-[10px] text-slate-300 mt-1">Try a different term or switch market</p>
           </div>
         )}
@@ -397,7 +565,7 @@ export function SearchPage() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <GitCompareArrows className="w-4 h-4 text-blue-600" />
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800">Comparing {selected.length} {market === 'rx' ? 'SKU' : 'item'}{selected.length > 1 ? 's' : ''}</span>
+              <span className="text-[11px] sm:text-xs font-bold text-slate-800">Comparing {selected.length} {itemLabel.toLowerCase()}{selected.length > 1 ? 's' : ''}</span>
             </div>
             <button onClick={clearAll} className="text-[9px] text-red-500 font-semibold hover:underline">Clear all</button>
           </div>
@@ -436,6 +604,60 @@ export function SearchPage() {
         </div>
       )}
 
+      {/* Monthly Trend Chart (Rx only) */}
+      {market === 'rx' && selected.length > 0 && trendData.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up">
+          <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Monthly Trend</h3>
+              <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Sales $</span>
+            </div>
+            <p className="text-[9px] text-slate-500 mt-1">Month-by-month sales value for selected {groupByBrand ? 'brands' : 'SKUs'}</p>
+          </div>
+          <div className="p-3 sm:p-5">
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart data={trendData} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+                <Tooltip
+                  formatter={(v: number) => formatCompactDollar(v)}
+                  labelStyle={{ fontSize: 11, fontWeight: 600 }}
+                  contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 9, paddingTop: 8 }}
+                  iconType="circle"
+                  iconSize={8}
+                />
+                {selected.map((s, i) => (
+                  <Line
+                    key={s.id}
+                    dataKey={`p${i}`}
+                    name={s.name.length > 30 ? s.name.slice(0, 28) + '...' : s.name}
+                    stroke={COLORS[i % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 2, fill: COLORS[i % COLORS.length] }}
+                    activeDot={{ r: 4 }}
+                    animationDuration={800}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly trend loading state */}
+      {market === 'rx' && selected.length > 0 && state.monthlyLoading && trendData.length === 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6 text-center animate-fade-in-up">
+          <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+          <p className="text-[10px] text-slate-400">Loading monthly trend data...</p>
+        </div>
+      )}
+
       {/* Value Comparison Chart */}
       {selected.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up">
@@ -445,7 +667,7 @@ export function SearchPage() {
               <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Value Comparison</h3>
               <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">TY vs LY</span>
             </div>
-            <p className="text-[9px] text-slate-500 mt-1">Side-by-side value comparison across selected products</p>
+            <p className="text-[9px] text-slate-500 mt-1">Side-by-side value comparison across selected {groupByBrand ? 'brands' : 'products'}</p>
           </div>
           <div className="p-3 sm:p-5">
             <ResponsiveContainer width="100%" height={Math.max(200, selected.length * 50 + 40)}>
@@ -611,6 +833,7 @@ export function SearchPage() {
           <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
             Start by searching for {market === 'rx' ? 'an Rx SKU (e.g. "Ozempic", "semaglutide", or "Novo Nordisk")' : 'an OTC item (e.g. "Nurofen", "Panadol", or "Voltaren")'}.
             Select multiple products to compare values, growth, and market position side-by-side.
+            {' '}Use <strong>Group by Brand</strong> to aggregate all SKUs under a brand name.
           </p>
           <div className="flex flex-wrap gap-2 justify-center mt-4">
             {(market === 'rx'
