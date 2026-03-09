@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Generated data files (built from CSVs by scripts/preprocess-data.mjs)
+public/data/*.json
 dist-ssr
 *.local
 

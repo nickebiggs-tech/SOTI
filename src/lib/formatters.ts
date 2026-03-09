@@ -32,12 +32,14 @@ export function formatNumber(value: number): string {
   return value.toLocaleString('en')
 }
 
-/** Compact numbers: 20.4M / 9.3K / 1,234 */
+/** Compact numbers: 20.4M / 9.3K / 1,234 — handles negatives */
 export function formatCompact(value: number): string {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
-  return value.toString()
+  const abs = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`
+  return `${sign}${Math.round(abs).toLocaleString('en')}`
 }
 
 export function formatDelta(value: number, decimals = 1): string {

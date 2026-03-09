@@ -72,9 +72,9 @@ export function DashboardPage() {
   const totalMarketLY = ethTotalLY + otcTotalLY
   const totalGrowth = totalMarketLY ? ((totalMarket - totalMarketLY) / totalMarketLY) * 100 : 0
 
-  const ethSkuCount = useMemo(() => new Set(state.eth.map(r => r.sku)).size, [state.eth])
+  const ethSkuCount = state.ethSkus.length
   const otcSkuCount = useMemo(() => new Set(state.otc.map(r => r.packName)).size, [state.otc])
-  const ethMfrCount = useMemo(() => new Set(state.eth.map(r => r.manufacturer)).size, [state.eth])
+  const ethMfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
   const otcMfrCount = useMemo(() => new Set(state.otc.map(r => r.manufacturer)).size, [state.otc])
 
   // Top 10 categories for each
@@ -103,21 +103,15 @@ export function DashboardPage() {
   const [rxWatchCat, setRxWatchCat] = useState<string | null>(null)
   const [otcWatchCat, setOtcWatchCat] = useState<string | null>(null)
 
-  // Top SKUs (Rx) aggregated
+  // Top SKUs (Rx) — already aggregated at SKU level
   const topRxSkus = useMemo(() => {
-    const map: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-    state.eth.forEach(r => {
-      if (!map[r.sku]) map[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-      const s = map[r.sku]!
-      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
-    })
-    return Object.entries(map).map(([sku, s]) => ({
-      name: sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-      tyValue: s.tyV, lyValue: s.lyV,
-      growth: s.lyV ? ((s.tyV - s.lyV) / s.lyV) * 100 : 999,
-      absChange: s.tyV - s.lyV,
+    return state.ethSkus.map(r => ({
+      name: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      absChange: r.tyValue - r.lyValue,
     })).sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
-  }, [state.eth])
+  }, [state.ethSkus])
 
   // Top OTC Items
   const topOtcItems = useMemo(() => {
@@ -133,18 +127,11 @@ export function DashboardPage() {
 
   // ── Rx Watch: category-level growth/decline with product drill-down ──
   const rxWatchData = useMemo(() => {
-    // Per-SKU aggregation across all categories
-    const skuMap: Record<string, { tyV: number; lyV: number; cat: string; mfr: string; mol: string }> = {}
-    state.eth.forEach(r => {
-      if (!skuMap[r.sku]) skuMap[r.sku] = { tyV: 0, lyV: 0, cat: r.category, mfr: r.manufacturer, mol: r.molecule }
-      const s = skuMap[r.sku]!
-      if (r.period === 'APR24-MAR25') s.tyV += r.sales; else s.lyV += r.sales
-    })
-    const allSkus = Object.entries(skuMap).map(([sku, s]) => ({
-      sku, category: s.cat, manufacturer: s.mfr, molecule: s.mol,
-      tyValue: s.tyV, lyValue: s.lyV,
-      absChange: s.tyV - s.lyV,
-      growth: s.lyV > 0 ? ((s.tyV - s.lyV) / s.lyV) * 100 : (s.tyV > 0 ? 999 : 0),
+    const allSkus = state.ethSkus.map(r => ({
+      sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+      tyValue: r.tyValue, lyValue: r.lyValue,
+      absChange: r.tyValue - r.lyValue,
+      growth: r.lyValue > 0 ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : (r.tyValue > 0 ? 999 : 0),
     }))
 
     // Categories with their top rising & declining products
@@ -168,7 +155,7 @@ export function DashboardPage() {
     const newEntrants = [...allSkus].filter(s => s.growth >= 900 && s.tyValue > 10000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 5)
 
     return { categories, topRisers, topDecliners, newEntrants }
-  }, [state.eth, ethCategories])
+  }, [state.ethSkus, ethCategories])
 
   // Selected Rx Watch category details
   const rxWatchCatDetail = useMemo(() => {
@@ -264,8 +251,8 @@ export function DashboardPage() {
       </div>
 
       {/* Opportunity & Risk — with $ value */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '80ms' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-fast">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
           <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
             <Target className="w-3 h-3" /> Rx Opportunity
           </h3>
@@ -279,7 +266,7 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '120ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
           <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
             <AlertTriangle className="w-3 h-3" /> Rx Value at Risk
           </h3>
@@ -293,7 +280,7 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '160ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
           <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
             <Target className="w-3 h-3" /> OTC Opportunity
           </h3>
@@ -307,7 +294,7 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
           <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
             <AlertTriangle className="w-3 h-3" /> OTC Value at Risk
           </h3>
@@ -369,13 +356,13 @@ export function DashboardPage() {
       </div>
 
       {/* Market Split + Top Categories */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 stagger-fast">
         {/* Market split donut */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Market Split</h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie data={marketSplit} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={4} dataKey="value" cornerRadius={4} animationDuration={1000}>
+              <Pie data={marketSplit} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={4} dataKey="value" cornerRadius={4} animationDuration={1200} animationBegin={200} animationEasing="ease-out">
                 <Cell fill="#2563EB" />
                 <Cell fill="#0D9488" />
               </Pie>
@@ -386,7 +373,7 @@ export function DashboardPage() {
         </div>
 
         {/* Top Rx categories */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card animate-fade-in-up" style={{ animationDelay: '250ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-slate-700">Top Rx by Value</h3>
             <button onClick={() => navigate('/dispense')} className="text-[10px] text-primary font-medium flex items-center gap-0.5">
@@ -408,7 +395,7 @@ export function DashboardPage() {
         </div>
 
         {/* Top OTC categories */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card animate-fade-in-up" style={{ animationDelay: '350ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-slate-700">Top OTC by Value</h3>
             <button onClick={() => navigate('/otc')} className="text-[10px] text-primary font-medium flex items-center gap-0.5">
@@ -431,8 +418,8 @@ export function DashboardPage() {
       </div>
 
       {/* Full-width category value bars */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card animate-fade-in-up" style={{ animationDelay: '450ms' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 stagger-fast">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Dispense — Category Value ($)</h3>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={ethTop10} layout="vertical" margin={{ left: 10 }}>
@@ -440,14 +427,14 @@ export function DashboardPage() {
               <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
               <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-              <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={800}>
+              <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={1000} animationEasing="ease-out">
                 {ethTop10.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card animate-fade-in-up" style={{ animationDelay: '550ms' }}>
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <h3 className="text-sm font-semibold text-slate-700 mb-4">OTC — Category Value ($)</h3>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={otcTop10} layout="vertical" margin={{ left: 10 }}>
@@ -455,7 +442,7 @@ export function DashboardPage() {
               <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
               <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-              <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={800}>
+              <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={1000} animationEasing="ease-out">
                 {otcTop10.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
             </BarChart>
@@ -464,7 +451,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Top SKUs & Items ── */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '600ms' }}>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-chart-card" style={{ animationDelay: '200ms' }}>
         <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-violet-50/60 to-indigo-50/40">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <BarChart3 className="w-4 h-4 text-violet-600 shrink-0" />
@@ -531,7 +518,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Rx Watch ── */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '650ms' }}>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-chart-card" style={{ animationDelay: '250ms' }}>
         <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Eye className="w-4 h-4 text-blue-600 shrink-0" />
@@ -694,7 +681,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── OTC Watch ── */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-fade-in-up" style={{ animationDelay: '700ms' }}>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden animate-chart-card" style={{ animationDelay: '300ms' }}>
         <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/40">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Eye className="w-4 h-4 text-teal-600 shrink-0" />
@@ -874,7 +861,7 @@ export function DashboardPage() {
               <p key={i} className="text-[11px] text-white/60 leading-relaxed">{line}</p>
             ))}
             <p className="text-[8px] text-white/25 mt-2">
-              Source: {formatCompact(state.eth.length + state.otc.length)} records · NostraData Market Intelligence
+              Source: {formatCompact(state.ethSkus.length + state.otc.length)} records · NostraData Market Intelligence
             </p>
           </div>
         )}

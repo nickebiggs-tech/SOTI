@@ -14,10 +14,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
         {/* Mobile hamburger */}
         <button
           onClick={onMenuToggle}
-          className="lg:hidden p-2 -ml-1 text-slate-500 hover:text-slate-700 active:bg-slate-100 rounded-lg transition-colors"
-          aria-label="Open menu"
+          className="lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center -ml-2 text-slate-500 hover:text-slate-700 active:bg-slate-100 rounded-xl transition-colors"
+          aria-label="Open navigation menu"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-6 h-6" />
         </button>
         {/* Brand */}
         <div className="flex items-center gap-1.5">

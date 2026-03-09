@@ -75,36 +75,49 @@
   }
 }
 
-/* ---- Core Animations ---- */
+/* =============================================
+   CORE KEYFRAME ANIMATIONS
+   ============================================= */
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; -webkit-transform: translateY(8px); transform: translateY(8px); }
+  to { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; -webkit-transform: translateY(16px); transform: translateY(16px); }
+  to { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
+}
+
+@keyframes fade-in-up-lg {
+  from { opacity: 0; -webkit-transform: translateY(30px); transform: translateY(30px); }
+  to { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
 }
 
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; -webkit-transform: translateX(20px); transform: translateX(20px); }
+  to { opacity: 1; -webkit-transform: translateX(0); transform: translateX(0); }
 }
 
 @keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; -webkit-transform: translateX(-20px); transform: translateX(-20px); }
+  to { opacity: 1; -webkit-transform: translateX(0); transform: translateX(0); }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; -webkit-transform: scale(0.95); transform: scale(0.95); }
+  to { opacity: 1; -webkit-transform: scale(1); transform: scale(1); }
+}
+
+@keyframes scale-bounce {
+  0% { opacity: 0; -webkit-transform: scale(0.9); transform: scale(0.9); }
+  70% { -webkit-transform: scale(1.03); transform: scale(1.03); }
+  100% { opacity: 1; -webkit-transform: scale(1); transform: scale(1); }
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { -webkit-transform: rotate(0deg); transform: rotate(0deg); }
+  to { -webkit-transform: rotate(360deg); transform: rotate(360deg); }
 }
 
 @keyframes pulse-glow {
@@ -118,127 +131,324 @@
 }
 
 @keyframes hero-fade-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; -webkit-transform: translateY(20px); transform: translateY(20px); }
+  to { opacity: 1; -webkit-transform: translateY(0); transform: translateY(0); }
 }
 
 @keyframes hero-number-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; -webkit-transform: translateY(16px) scale(0.95); transform: translateY(16px) scale(0.95); }
+  to { opacity: 1; -webkit-transform: translateY(0) scale(1); transform: translateY(0) scale(1); }
 }
 
-/* ---- Orbit animations for login page icons ---- */
+/* Orbit animations for login page */
 @keyframes orbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { -webkit-transform: rotate(0deg); transform: rotate(0deg); }
+  to { -webkit-transform: rotate(360deg); transform: rotate(360deg); }
 }
 
 @keyframes orbit-reverse {
-  from { transform: rotate(360deg); }
-  to { transform: rotate(0deg); }
+  from { -webkit-transform: rotate(360deg); transform: rotate(360deg); }
+  to { -webkit-transform: rotate(0deg); transform: rotate(0deg); }
 }
 
-/* ---- Floating particle animation ---- */
+/* Floating particle animation */
 @keyframes float-gentle {
-  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
-  25% { transform: translateY(-10px) translateX(5px); opacity: 0.7; }
-  50% { transform: translateY(-5px) translateX(-3px); opacity: 0.5; }
-  75% { transform: translateY(-15px) translateX(8px); opacity: 0.6; }
+  0%, 100% { -webkit-transform: translateY(0) translateX(0); transform: translateY(0) translateX(0); opacity: 0.4; }
+  25% { -webkit-transform: translateY(-10px) translateX(5px); transform: translateY(-10px) translateX(5px); opacity: 0.7; }
+  50% { -webkit-transform: translateY(-5px) translateX(-3px); transform: translateY(-5px) translateX(-3px); opacity: 0.5; }
+  75% { -webkit-transform: translateY(-15px) translateX(8px); transform: translateY(-15px) translateX(8px); opacity: 0.6; }
 }
 
-/* ---- Width grow for progress bars ---- */
+/* Width grow for progress bars */
 @keyframes width-grow {
   from { width: 0%; }
 }
 
-/* ---- Animated glow bar for KPI accents ---- */
+/* KPI glow slide */
 @keyframes kpi-glow-slide {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
+  0% { -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+  100% { -webkit-transform: translateX(200%); transform: translateX(200%); }
 }
 
-/* ---- Count up number animation ---- */
+/* Count pop */
 @keyframes count-pop {
-  0% { transform: scale(0.8); opacity: 0; }
-  60% { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+  0% { -webkit-transform: scale(0.8); transform: scale(0.8); opacity: 0; }
+  60% { -webkit-transform: scale(1.05); transform: scale(1.05); opacity: 1; }
+  100% { -webkit-transform: scale(1); transform: scale(1); opacity: 1; }
 }
 
-/* ---- Subtle breathing glow ---- */
+/* Breathing glow */
 @keyframes breathe {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 
-/* ---- Class-based animations ---- */
+/* =============================================
+   SIDEBAR / MOBILE MENU ANIMATIONS (Safari-safe)
+   ============================================= */
+
+/* Sidebar panel slides in from left */
+@keyframes sidebar-slide-in {
+  from {
+    opacity: 0;
+    -webkit-transform: translateX(-100%);
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+
+/* Backdrop fade in */
+@keyframes sidebar-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sidebar-panel-enter {
+  -webkit-animation: sidebar-slide-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: sidebar-slide-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+  -webkit-transform: translateZ(0); /* Force GPU layer — Safari fix */
+  transform: translateZ(0);
+}
+
+.sidebar-backdrop-enter {
+  -webkit-animation: sidebar-backdrop-in 0.25s ease-out both;
+  animation: sidebar-backdrop-in 0.25s ease-out both;
+}
+
+/* Safari: smooth scrolling in sidebar nav */
+.sidebar-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* =============================================
+   CHART & VISUALISATION ANIMATIONS
+   ============================================= */
+
+/* Bar chart bars grow up */
+@keyframes bar-grow-up {
+  from {
+    -webkit-transform: scaleY(0);
+    transform: scaleY(0);
+    -webkit-transform-origin: bottom;
+    transform-origin: bottom;
+  }
+  to {
+    -webkit-transform: scaleY(1);
+    transform: scaleY(1);
+  }
+}
+
+/* Bar chart bars grow from left */
+@keyframes bar-grow-right {
+  from {
+    -webkit-transform: scaleX(0);
+    transform: scaleX(0);
+    -webkit-transform-origin: left;
+    transform-origin: left;
+  }
+  to {
+    -webkit-transform: scaleX(1);
+    transform: scaleX(1);
+  }
+}
+
+/* Chart card lift with shadow */
+@keyframes chart-card-in {
+  from {
+    opacity: 0;
+    -webkit-transform: translateY(20px) scale(0.98);
+    transform: translateY(20px) scale(0.98);
+    box-shadow: 0 0 0 0 rgba(0,0,0,0);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1);
+    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.06);
+  }
+}
+
+/* Pie chart scale-rotate entrance */
+@keyframes pie-reveal {
+  from {
+    opacity: 0;
+    -webkit-transform: scale(0.6) rotate(-30deg);
+    transform: scale(0.6) rotate(-30deg);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: scale(1) rotate(0deg);
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Number counter pop-in */
+@keyframes number-pop {
+  0% {
+    opacity: 0;
+    -webkit-transform: translateY(12px) scale(0.85);
+    transform: translateY(12px) scale(0.85);
+  }
+  60% {
+    -webkit-transform: translateY(-2px) scale(1.02);
+    transform: translateY(-2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    -webkit-transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Glow pulse for important values */
+@keyframes value-glow {
+  0%, 100% {
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    text-shadow: 0 0 12px rgba(37, 99, 235, 0.15);
+  }
+}
+
+/* =============================================
+   CLASS-BASED ANIMATIONS
+   ============================================= */
 
 .animate-fade-in {
+  -webkit-animation: fade-in 0.4s ease-out both;
   animation: fade-in 0.4s ease-out both;
 }
 
 .animate-fade-in-up {
+  -webkit-animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.animate-fade-in-up-lg {
+  -webkit-animation: fade-in-up-lg 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-in-up-lg 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-slide-in {
+  -webkit-animation: slide-in-right 0.3s ease-out both;
   animation: slide-in-right 0.3s ease-out both;
 }
 
 .animate-slide-in-left {
+  -webkit-animation: slide-in-left 0.3s ease-out both;
   animation: slide-in-left 0.3s ease-out both;
 }
 
 .animate-scale-in {
+  -webkit-animation: scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation: scale-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.animate-scale-bounce {
+  -webkit-animation: scale-bounce 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: scale-bounce 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-pulse-glow {
+  -webkit-animation: pulse-glow 2s ease-in-out infinite;
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .animate-width-grow {
+  -webkit-animation: width-grow 1s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation: width-grow 1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-count-pop {
+  -webkit-animation: count-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation: count-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.animate-number-pop {
+  -webkit-animation: number-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: number-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-breathe {
+  -webkit-animation: breathe 3s ease-in-out infinite;
   animation: breathe 3s ease-in-out infinite;
 }
 
-/* ---- Staggered children animation ---- */
+.animate-chart-card {
+  -webkit-animation: chart-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: chart-card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pie-reveal {
+  -webkit-animation: pie-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pie-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-value-glow {
+  -webkit-animation: value-glow 3s ease-in-out infinite;
+  animation: value-glow 3s ease-in-out infinite;
+}
+
+/* =============================================
+   STAGGERED CHILDREN
+   ============================================= */
+
 .stagger-children > * {
+  -webkit-animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
-.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
-.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
-.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
-.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
-.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
-.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+.stagger-children > *:nth-child(1) { -webkit-animation-delay: 0ms; animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { -webkit-animation-delay: 60ms; animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { -webkit-animation-delay: 120ms; animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { -webkit-animation-delay: 180ms; animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { -webkit-animation-delay: 240ms; animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { -webkit-animation-delay: 300ms; animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { -webkit-animation-delay: 360ms; animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { -webkit-animation-delay: 420ms; animation-delay: 420ms; }
 
-/* ---- Chart card with mobile-optimised hover ---- */
+/* Faster stagger for chart sections */
+.stagger-fast > * {
+  -webkit-animation: chart-card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: chart-card-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger-fast > *:nth-child(1) { -webkit-animation-delay: 50ms; animation-delay: 50ms; }
+.stagger-fast > *:nth-child(2) { -webkit-animation-delay: 120ms; animation-delay: 120ms; }
+.stagger-fast > *:nth-child(3) { -webkit-animation-delay: 190ms; animation-delay: 190ms; }
+.stagger-fast > *:nth-child(4) { -webkit-animation-delay: 260ms; animation-delay: 260ms; }
+.stagger-fast > *:nth-child(5) { -webkit-animation-delay: 330ms; animation-delay: 330ms; }
+.stagger-fast > *:nth-child(6) { -webkit-animation-delay: 400ms; animation-delay: 400ms; }
+
+/* =============================================
+   CHART CARDS & KPI CARDS
+   ============================================= */
+
 .chart-card {
+  -webkit-transition: box-shadow 0.25s ease, -webkit-transform 0.25s ease;
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 .chart-card:hover {
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.08);
+  -webkit-transform: translateY(-1px);
   transform: translateY(-1px);
 }
 
 /* KPI card hover + active lift */
 .kpi-hover {
+  -webkit-transition: box-shadow 0.2s ease, -webkit-transform 0.2s ease;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 .kpi-hover:hover {
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.1);
+  -webkit-transform: translateY(-3px);
+  transform: translateY(-3px);
 }
 .kpi-hover:active {
+  -webkit-transform: translateY(0px);
   transform: translateY(0px);
 }
 
@@ -250,7 +460,10 @@
   background-clip: text;
 }
 
-/* ---- Recharts tooltip — mobile-friendly ---- */
+/* =============================================
+   RECHARTS STYLING
+   ============================================= */
+
 .recharts-default-tooltip {
   border-radius: 10px !important;
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.12) !important;
@@ -265,8 +478,8 @@
   margin-bottom: 4px !important;
 }
 
-/* ---- Recharts animation enhancements ---- */
 .recharts-bar-rectangle {
+  -webkit-transition: opacity 0.2s ease, filter 0.2s ease;
   transition: opacity 0.2s ease, filter 0.2s ease;
 }
 .recharts-bar-rectangle:hover {
@@ -275,45 +488,60 @@
 }
 
 .recharts-line-dot {
+  -webkit-transition: r 0.2s ease;
   transition: r 0.2s ease;
 }
 
 .recharts-active-dot circle {
-  filter: drop-shadow(0 0 4px rgba(37, 99, 235, 0.4));
+  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.5));
 }
 
-/* Smooth chart wrapper entrance */
+/* Chart wrapper entrance */
 .recharts-wrapper {
+  -webkit-animation: fade-in 0.6s ease-out both;
   animation: fade-in 0.6s ease-out both;
 }
 
 /* Pie/donut hover glow */
 .recharts-pie-sector {
-  transition: opacity 0.2s ease;
+  -webkit-transition: opacity 0.2s ease, filter 0.2s ease;
+  transition: opacity 0.2s ease, filter 0.2s ease;
   cursor: pointer;
 }
 .recharts-pie-sector:hover {
   opacity: 0.85;
-  filter: brightness(1.1);
+  filter: brightness(1.1) drop-shadow(0 0 4px rgba(0,0,0,0.1));
 }
 
-/* ---- Smooth page transitions ---- */
+/* =============================================
+   PAGE TRANSITIONS
+   ============================================= */
+
 .page-enter {
+  -webkit-animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   animation: fade-in-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ---- Mobile touch feedback ---- */
+/* =============================================
+   MOBILE TOUCH FEEDBACK (Safari-optimised)
+   ============================================= */
+
 @media (max-width: 1024px) {
   .chart-card:active {
+    -webkit-transform: scale(0.99);
     transform: scale(0.99);
+    -webkit-transition: -webkit-transform 0.1s ease;
     transition: transform 0.1s ease;
   }
   .kpi-hover:active {
+    -webkit-transform: scale(0.97);
     transform: scale(0.97);
+    -webkit-transition: -webkit-transform 0.1s ease;
     transition: transform 0.1s ease;
   }
   button:active, a:active, select:active {
     opacity: 0.85;
+    -webkit-transition: opacity 0.08s ease;
     transition: opacity 0.08s ease;
   }
   * {
@@ -321,7 +549,10 @@
   }
 }
 
-/* ---- iPhone notch / Dynamic Island safe areas ---- */
+/* =============================================
+   SAFE AREA INSETS (iPhone notch / Dynamic Island)
+   ============================================= */
+
 @supports (padding-top: env(safe-area-inset-top)) {
   .safe-area-top {
     padding-top: env(safe-area-inset-top);
@@ -331,7 +562,16 @@
   }
 }
 
-/* ---- KPI accent stripe ---- */
+.safe-area-inset {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* =============================================
+   KPI ACCENT BAR
+   ============================================= */
+
 .kpi-accent-bar {
   position: absolute;
   top: 0;
@@ -351,10 +591,14 @@
   width: 50%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  -webkit-animation: kpi-glow-slide 3s ease-in-out infinite;
   animation: kpi-glow-slide 3s ease-in-out infinite;
 }
 
-/* ---- Recharts mobile legend sizing ---- */
+/* =============================================
+   RESPONSIVE OVERRIDES
+   ============================================= */
+
 @media (max-width: 640px) {
   .recharts-legend-item-text {
     font-size: 10px !important;
@@ -362,25 +606,16 @@
   .recharts-legend-wrapper {
     padding-top: 4px !important;
   }
-}
-
-.safe-area-inset {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-@media (max-width: 640px) {
   select option {
     font-size: 16px;
     padding: 12px;
   }
 }
 
-/* ---- Glass morphism utility ---- */
+/* Glass morphism (Safari-safe with -webkit prefix) */
 .glass {
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }

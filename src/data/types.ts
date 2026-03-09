@@ -1,4 +1,4 @@
-/** Ethical / Prescription (Dispense) — monthly rows */
+/** Ethical / Prescription (Dispense) — monthly rows (lazy-loaded) */
 export interface EthRecord {
   period: string
   date: string
@@ -9,6 +9,18 @@ export interface EthRecord {
   sku: string
   units: number
   sales: number
+}
+
+/** ETH SKU-level aggregate (TY vs LY) — loaded immediately */
+export interface EthSkuRecord {
+  sku: string
+  category: string
+  manufacturer: string
+  molecule: string
+  tyValue: number
+  lyValue: number
+  tyUnits: number
+  lyUnits: number
 }
 
 /** OTC — aggregated LY vs TY */
