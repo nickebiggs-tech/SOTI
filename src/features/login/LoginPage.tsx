@@ -2,246 +2,97 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import {
-  Lock, ArrowRight, Pill, Heart,
-  Activity, TrendingUp, BarChart3, Database,
-  Factory,
+  Lock, ArrowRight, Pill, TrendingUp, BarChart3, Database,
+  Activity, Lightbulb, Target, LineChart,
 } from 'lucide-react'
 
-/* ---- Centre node: Patient ---- */
-function CentreNode() {
-  return (
-    <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
-         style={{ animation: 'hero-fade-in 0.8s ease-out 0.3s both' }}>
-      {/* Outer pulse ring */}
-      <div className="absolute w-28 h-28 rounded-full animate-pulse-glow" />
-      {/* Glow circle */}
-      <div className="w-[88px] h-[88px] rounded-full bg-gradient-to-br from-white/20 to-white/[0.06] backdrop-blur-sm border-2 border-white/25 flex items-center justify-center shadow-[0_0_48px_rgba(255,255,255,0.18)]"
-           style={{ animation: 'breathe 3s ease-in-out infinite' }}>
-        <Heart className="w-10 h-10 text-white/90" />
-      </div>
-      <p className="text-[11px] font-bold text-white/70 tracking-[0.25em] uppercase mt-3">Patient</p>
-    </div>
-  )
-}
-
-/* ---- Reusable triangle node ---- */
-interface TriangleNodeProps {
+/* ---- Value proposition card ---- */
+interface ValuePropProps {
   icon: React.ReactNode
-  label: string
-  sublabel: string
-  color: string
-  className: string
+  title: string
+  desc: string
   delay: string
 }
 
-function TriangleNode({ icon, label, sublabel, color, className, delay }: TriangleNodeProps) {
+function ValueProp({ icon, title, desc, delay }: ValuePropProps) {
   return (
-    <div className={`absolute z-10 flex flex-col items-center ${className}`}
-         style={{ animation: `hero-fade-in 0.8s ease-out both`, animationDelay: delay }}>
-      <div className="w-[72px] h-[72px] rounded-2xl bg-white/[0.08] backdrop-blur-sm border border-white/[0.12] flex items-center justify-center transition-transform hover:scale-105"
-           style={{ boxShadow: `0 0 32px ${color}30` }}>
+    <div
+      className="flex items-start gap-3.5"
+      style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: delay }}
+    >
+      <div className="w-10 h-10 rounded-xl bg-white/[0.08] border border-white/[0.10] flex items-center justify-center shrink-0">
         {icon}
       </div>
-      <p className="text-[11px] font-bold tracking-[0.2em] uppercase mt-2.5" style={{ color: `${color}CC` }}>
-        {label}
-      </p>
-      <p className="text-[9px] text-white/35 mt-0.5">{sublabel}</p>
-    </div>
-  )
-}
-
-/* ---- SVG connection lines with animated dashes ---- */
-function ConnectionLines() {
-  return (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none z-[5]" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <style>{`
-          .flow-line { stroke-dasharray: 8 6; animation: dash-flow 2s linear infinite; }
-          @keyframes dash-flow { to { stroke-dashoffset: -28; } }
-        `}</style>
-      </defs>
-
-      {/* Supplier → Patient centre */}
-      <path d="M85,90 Q140,155 200,165" className="flow-line" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
-      {/* Patient centre → Pharmacy */}
-      <path d="M200,165 Q260,155 315,90" className="flow-line" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" style={{ animationDelay: '-0.7s' }} />
-      {/* Patient centre → Data */}
-      <path d="M200,175 Q200,260 200,330" className="flow-line" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1.5" style={{ animationDelay: '-1.2s' }} />
-      {/* Supplier → Data (outer) */}
-      <path d="M85,100 Q80,220 200,330" className="flow-line" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" style={{ animationDelay: '-0.4s' }} />
-      {/* Pharmacy → Data (outer) */}
-      <path d="M315,100 Q320,220 200,330" className="flow-line" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" style={{ animationDelay: '-1.5s' }} />
-      {/* Supplier ↔ Pharmacy (top edge) */}
-      <path d="M95,78 Q200,55 305,78" className="flow-line" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" style={{ animationDelay: '-0.9s' }} />
-    </svg>
-  )
-}
-
-/* ---- Flowing data particles along paths ---- */
-function FlowingParticles() {
-  return (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none z-[6]" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
-      {/* Supplier → Centre (blue) */}
-      <circle r="2.5" fill="rgba(59,130,246,0.7)">
-        <animateMotion dur="3.5s" repeatCount="indefinite" path="M85,90 Q140,155 200,165" />
-      </circle>
-      {/* Centre → Pharmacy (teal) */}
-      <circle r="2.5" fill="rgba(13,148,136,0.7)">
-        <animateMotion dur="3s" repeatCount="indefinite" path="M200,165 Q260,155 315,90" begin="0.8s" />
-      </circle>
-      {/* Centre → Data (purple) */}
-      <circle r="2" fill="rgba(124,58,237,0.6)">
-        <animateMotion dur="3s" repeatCount="indefinite" path="M200,175 Q200,260 200,330" begin="0.4s" />
-      </circle>
-      {/* Data → Centre (green) */}
-      <circle r="2" fill="rgba(16,185,129,0.6)">
-        <animateMotion dur="3.5s" repeatCount="indefinite" path="M200,330 Q200,260 200,175" begin="1.5s" />
-      </circle>
-      {/* Pharmacy → Centre (teal) */}
-      <circle r="2" fill="rgba(13,148,136,0.5)">
-        <animateMotion dur="4s" repeatCount="indefinite" path="M315,90 Q260,155 200,165" begin="2s" />
-      </circle>
-      {/* Supplier outer → Data (blue) */}
-      <circle r="1.5" fill="rgba(59,130,246,0.4)">
-        <animateMotion dur="5s" repeatCount="indefinite" path="M85,100 Q80,220 200,330" begin="1s" />
-      </circle>
-      {/* Pharmacy outer → Data (amber) */}
-      <circle r="1.5" fill="rgba(217,119,6,0.5)">
-        <animateMotion dur="5s" repeatCount="indefinite" path="M315,100 Q320,220 200,330" begin="2.5s" />
-      </circle>
-      {/* Supplier ↔ Pharmacy (top, small) */}
-      <circle r="1.5" fill="rgba(255,255,255,0.3)">
-        <animateMotion dur="4s" repeatCount="indefinite" path="M95,78 Q200,55 305,78" begin="0.5s" />
-      </circle>
-    </svg>
-  )
-}
-
-/* ---- Triangle infographic composition ---- */
-function TriangleInfographic() {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <div className="relative w-full max-w-[420px] aspect-square mx-auto">
-        <ConnectionLines />
-        <FlowingParticles />
-
-        {/* Supplier — top-left */}
-        <TriangleNode
-          icon={<Factory className="w-8 h-8 text-blue-400/80" />}
-          label="Supplier"
-          sublabel="Manufacturers & brands"
-          color="#3B82F6"
-          className="left-[8%] top-[10%]"
-          delay="0.5s"
-        />
-
-        {/* Pharmacy — top-right */}
-        <TriangleNode
-          icon={<Pill className="w-8 h-8 text-teal-400/80" />}
-          label="Pharmacy"
-          sublabel="Dispensing & retail"
-          color="#0D9488"
-          className="right-[8%] top-[10%]"
-          delay="0.7s"
-        />
-
-        {/* Data/Intelligence — bottom */}
-        <TriangleNode
-          icon={<BarChart3 className="w-8 h-8 text-violet-400/80" />}
-          label="Intelligence"
-          sublabel="Data-driven insights"
-          color="#7C3AED"
-          className="left-1/2 -translate-x-1/2 bottom-[4%]"
-          delay="0.9s"
-        />
-
-        {/* Patient — centre */}
-        <CentreNode />
+      <div>
+        <p className="text-sm font-semibold text-white/90">{title}</p>
+        <p className="text-xs text-white/50 leading-relaxed mt-0.5">{desc}</p>
       </div>
     </div>
   )
 }
 
-/* ---- Market stat widgets ---- */
-function MarketStats() {
-  const stats = [
-    { icon: <Pill className="w-5 h-5" />, value: '$20.4B', label: 'Rx Market', color: '#3B82F6' },
-    { icon: <BarChart3 className="w-5 h-5" />, value: '$9.3B', label: 'OTC Market', color: '#0D9488' },
-    { icon: <Database className="w-5 h-5" />, value: '178K+', label: 'Products', color: '#7C3AED' },
-    { icon: <TrendingUp className="w-5 h-5" />, value: '+10.8%', label: 'Rx Growth', color: '#10B981' },
-  ]
+/* ---- Market stat pill ---- */
+interface StatPillProps {
+  value: string
+  label: string
+  color: string
+  delay: string
+}
 
+function StatPill({ value, label, color, delay }: StatPillProps) {
   return (
-    <div className="grid grid-cols-4 gap-3 max-w-lg mx-auto w-full">
-      {stats.map((s, i) => (
-        <div
-          key={s.label}
-          className="bg-white/[0.08] backdrop-blur-md rounded-xl p-4 border border-white/[0.08] text-center"
-          style={{ animation: 'hero-fade-in 0.5s ease-out both', animationDelay: `${1.0 + i * 0.12}s` }}
-        >
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: `${s.color}25`, color: s.color }}>
-            {s.icon}
-          </div>
-          <p className="text-lg font-bold text-white tracking-tight" style={{ animation: 'hero-number-in 0.4s ease-out both', animationDelay: `${1.2 + i * 0.12}s` }}>
-            {s.value}
-          </p>
-          <p className="text-[9px] text-white/45 mt-0.5 font-medium">{s.label}</p>
-        </div>
-      ))}
+    <div
+      className="flex items-center gap-2.5 bg-white/[0.06] backdrop-blur-sm rounded-xl px-4 py-3 border border-white/[0.08]"
+      style={{ animation: 'hero-fade-in 0.5s ease-out both', animationDelay: delay }}
+    >
+      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      <span
+        className="text-lg font-bold text-white tracking-tight"
+        style={{ animation: 'hero-number-in 0.4s ease-out both', animationDelay: delay }}
+      >
+        {value}
+      </span>
+      <span className="text-[10px] text-white/45 font-medium">{label}</span>
     </div>
   )
 }
 
-/* ---- Growth pulse indicator ---- */
-function GrowthPulse() {
+/* ---- Background grid decoration ---- */
+function GridDecoration() {
   return (
-    <div className="flex items-center gap-3 bg-white/[0.06] backdrop-blur-sm rounded-full px-5 py-2.5 border border-white/[0.08] mx-auto"
-         style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.5s' }}>
-      <Activity className="w-4 h-4 text-emerald-400" />
-      <span className="text-xs text-white/60 font-medium">Live market intelligence</span>
-      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Subtle radial glow */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-blue-500/[0.07] blur-[120px]" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-violet-500/[0.05] blur-[100px]" />
+      {/* Grid lines */}
+      <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="login-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#login-grid)" />
+      </svg>
     </div>
   )
 }
 
-/* ---- Mobile hero (compact triangle + stats) ---- */
+/* ---- Mobile hero ---- */
 function MobileHero() {
   return (
     <div className="lg:hidden bg-gradient-to-br from-hero-from via-hero-mid to-hero-to px-6 pt-14 pb-8 text-center relative overflow-hidden">
       <div className="relative z-10">
-        <div className="mb-6">
+        <div className="mb-5">
           <h1 className="text-4xl font-extrabold text-white mb-1.5 tracking-tight">SOTI</h1>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-white/50 font-semibold">State of the Industry</p>
-          <p className="text-[10px] text-white/35 mt-1.5 font-medium">Powered by <span className="font-bold text-white/55">NostraData</span></p>
-        </div>
-
-        {/* Compact triangle: Supplier — Patient — Pharmacy */}
-        <div className="flex items-center justify-center gap-5 mb-7"
-             style={{ animation: 'hero-fade-in 0.5s ease-out 0.3s both' }}>
-          <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-xl bg-white/[0.08] flex items-center justify-center border border-white/[0.08]">
-              <Factory className="w-5 h-5 text-blue-400/70" />
-            </div>
-            <span className="text-[8px] text-white/40 mt-1.5 uppercase tracking-wider">Supplier</span>
-          </div>
-          <div className="h-px w-6 bg-white/15" />
-          <div className="flex flex-col items-center">
-            <div className="w-14 h-14 rounded-full bg-white/[0.12] flex items-center justify-center border-2 border-white/25 animate-pulse-glow">
-              <Heart className="w-6 h-6 text-white/85" />
-            </div>
-            <span className="text-[9px] text-white/50 mt-1.5 uppercase tracking-wider font-bold">Patient</span>
-          </div>
-          <div className="h-px w-6 bg-white/15" />
-          <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-xl bg-white/[0.08] flex items-center justify-center border border-white/[0.08]">
-              <Pill className="w-5 h-5 text-teal-400/70" />
-            </div>
-            <span className="text-[8px] text-white/40 mt-1.5 uppercase tracking-wider">Pharmacy</span>
-          </div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-white/60 font-semibold">State of the Industry</p>
+          <p className="text-xs text-white/45 mt-2 max-w-[260px] mx-auto leading-relaxed">
+            Market intelligence and decision support for Australian pharmacy.
+          </p>
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-4 gap-2 max-w-[340px] mx-auto">
+        <div className="grid grid-cols-4 gap-2 max-w-[340px] mx-auto"
+             style={{ animation: 'hero-fade-in 0.5s ease-out 0.3s both' }}>
           {[
             { v: '$20.4B', l: 'Rx Market' },
             { v: '$9.3B', l: 'OTC' },
@@ -251,7 +102,7 @@ function MobileHero() {
             <div key={s.l} className="bg-white/[0.08] rounded-xl p-2.5 border border-white/[0.06]"
                  style={{ animation: 'hero-fade-in 0.4s ease-out both', animationDelay: `${0.5 + i * 0.1}s` }}>
               <p className="text-white text-sm font-bold">{s.v}</p>
-              <p className="text-white/35 text-[8px] mt-0.5">{s.l}</p>
+              <p className="text-white/40 text-[8px] mt-0.5">{s.l}</p>
             </div>
           ))}
         </div>
@@ -286,42 +137,79 @@ export function LoginPage() {
     <div className="min-h-[100dvh] flex flex-col lg:flex-row">
       {/* Left — Hero (desktop) */}
       <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] bg-gradient-to-br from-hero-from via-hero-mid to-hero-to relative overflow-hidden">
-        {/* Triangle infographic */}
-        <TriangleInfographic />
+        <GridDecoration />
 
         <div className="relative z-10 flex flex-col justify-between p-10 xl:p-16 w-full">
-          {/* Top branding */}
-          <div style={{ animation: 'hero-fade-in 0.8s ease-out both' }}>
-            <h1 className="text-4xl xl:text-5xl font-extrabold text-white tracking-tight">SOTI</h1>
-            <p className="text-xs uppercase tracking-[0.25em] text-white/50 font-semibold mt-1.5">State of the Industry</p>
-            <p className="text-white/35 text-sm mt-3 max-w-xs leading-relaxed">
-              Connecting suppliers, pharmacies, and patients through data intelligence.
-            </p>
-          </div>
-
-          {/* Spacer — triangle fills the centre */}
-          <div className="flex-1" />
-
-          {/* Bottom — market stats + pulse */}
-          <div className="space-y-3">
-            <MarketStats />
-            <GrowthPulse />
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between mt-8" style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.6s' }}>
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-                <Database className="w-4 h-4 text-white/50" />
-              </div>
-              <div>
-                <p className="text-[13px] text-white/60 font-medium">
-                  Powered by <span className="font-bold text-white/80">NostraData</span>
-                </p>
-                <p className="text-[9px] text-white/30">Market Intelligence Platform</p>
-              </div>
+          {/* Top — Branding + headline */}
+          <div>
+            <div style={{ animation: 'hero-fade-in 0.8s ease-out both' }}>
+              <h1 className="text-4xl xl:text-5xl font-extrabold text-white tracking-tight">SOTI</h1>
+              <p className="text-xs uppercase tracking-[0.25em] text-white/60 font-semibold mt-1.5">State of the Industry</p>
             </div>
-            <p className="text-[10px] text-white/20">v1.0</p>
+
+            <div className="mt-8 xl:mt-10 max-w-md" style={{ animation: 'hero-fade-in 0.7s ease-out both', animationDelay: '0.2s' }}>
+              <h2 className="text-xl xl:text-2xl font-bold text-white/95 leading-snug">
+                Market intelligence for<br />Australian pharmacy
+              </h2>
+              <p className="text-sm text-white/50 mt-3 leading-relaxed max-w-sm">
+                Data-driven insights across prescription and consumer health — helping suppliers, pharmacies, and industry leaders make better decisions.
+              </p>
+            </div>
+          </div>
+
+          {/* Middle — Value propositions */}
+          <div className="space-y-5 my-10 xl:my-12 max-w-md">
+            <ValueProp
+              icon={<Lightbulb className="w-5 h-5 text-amber-400/80" />}
+              title="Decision Support"
+              desc="Compare brands, molecules, and categories with interactive analytics that surface what matters."
+              delay="0.5s"
+            />
+            <ValueProp
+              icon={<Target className="w-5 h-5 text-blue-400/80" />}
+              title="Industry Expertise"
+              desc="15 years of pharmacy data intelligence distilled into clear, actionable market views."
+              delay="0.7s"
+            />
+            <ValueProp
+              icon={<LineChart className="w-5 h-5 text-emerald-400/80" />}
+              title="Live Market Data"
+              desc="Track $30B+ in pharmacy sales across 178K+ products with monthly trend analysis."
+              delay="0.9s"
+            />
+          </div>
+
+          {/* Bottom — Market stats */}
+          <div>
+            <div className="flex flex-wrap gap-2.5 mb-4">
+              <StatPill value="$20.4B" label="Rx Market" color="#3B82F6" delay="1.0s" />
+              <StatPill value="$9.3B" label="OTC Market" color="#0D9488" delay="1.1s" />
+              <StatPill value="178K+" label="Products" color="#7C3AED" delay="1.2s" />
+              <StatPill value="+10.8%" label="Rx Growth" color="#10B981" delay="1.3s" />
+            </div>
+
+            <div className="flex items-center gap-3 mt-2" style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.4s' }}>
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[11px] text-white/45 font-medium">Live market intelligence</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/[0.06]"
+                 style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.5s' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Database className="w-4 h-4 text-white/50" />
+                </div>
+                <div>
+                  <p className="text-[13px] text-white/60 font-medium">
+                    Powered by <span className="font-bold text-white/80">NostraData</span>
+                  </p>
+                  <p className="text-[9px] text-white/30">Australia&apos;s leading pharmacy data intelligence</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-white/20">v1.0</p>
+            </div>
           </div>
         </div>
       </div>
