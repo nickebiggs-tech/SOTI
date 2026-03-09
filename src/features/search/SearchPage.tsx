@@ -201,7 +201,11 @@ export function SearchPage() {
       if (prev.length >= 8) return prev
       return [...prev, item]
     })
-  }, [])
+    // In group-by-brand mode, clear search after selecting so user can immediately search for next brand
+    if (groupByBrand) {
+      setTimeout(() => setSearch(''), 150)
+    }
+  }, [groupByBrand])
 
   const removeSelected = useCallback((id: string) => {
     setSelected(prev => prev.filter(s => s.id !== id))
@@ -495,6 +499,18 @@ export function SearchPage() {
               </button>
             )}
           </div>
+
+          {/* Prompt to search for more when items are selected but search is empty */}
+          {selected.length > 0 && selected.length < 8 && search.length < 2 && (
+            <div className="flex items-center gap-2 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+              <Plus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <p className="text-[10px] text-emerald-700 font-medium">
+                {selected.length} {groupByBrand ? 'brand' : itemLabel.toLowerCase()}{selected.length > 1 ? 's' : ''} selected.
+                Search for more to compare side-by-side (up to 8).
+                {groupByBrand && selected.length === 1 && <span className="text-emerald-600"> Try searching &ldquo;{selected[0]!.name.includes('OZEMPIC') ? 'Mounjaro' : 'Ozempic'}&rdquo; to compare brands.</span>}
+              </p>
+            </div>
+          )}
 
           {search.length >= 2 && (
             <div className="flex items-center justify-between gap-2">
