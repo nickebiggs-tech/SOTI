@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthContext'
 import {
   Lock, ArrowRight, Database,
-  Lightbulb, Target, LineChart, BarChart3,
+  Lightbulb, Target, BarChart3,
 } from 'lucide-react'
 
 /* ---- Value proposition card ---- */
@@ -149,10 +149,10 @@ export function LoginPage() {
 
             <div className="mt-8 xl:mt-10 max-w-md" style={{ animation: 'hero-fade-in 0.7s ease-out both', animationDelay: '0.2s' }}>
               <h2 className="text-xl xl:text-2xl font-bold text-white/95 leading-snug">
-                Market intelligence for<br />Australian pharmacy
+                Know the market before<br />you make the call
               </h2>
               <p className="text-sm text-white/50 mt-3 leading-relaxed max-w-sm">
-                Data-driven insights across prescription and consumer health — helping suppliers, pharmacies, and industry leaders make better decisions.
+                Every category. Every brand. Every molecule. The data behind the decisions that shape Australian pharmacy — all in one place.
               </p>
             </div>
           </div>
@@ -161,20 +161,20 @@ export function LoginPage() {
           <div className="space-y-5 my-10 xl:my-12 max-w-md">
             <ValueProp
               icon={<Lightbulb className="w-5 h-5 text-amber-400/80" />}
-              title="Decision Support"
-              desc="Compare brands, molecules, and categories with interactive analytics that surface what matters."
+              title="Your Competitive Edge"
+              desc="The brands winning share, the categories in decline, the molecules reshaping therapy — see it all before your competitors do."
               delay="0.5s"
             />
             <ValueProp
               icon={<Target className="w-5 h-5 text-blue-400/80" />}
-              title="Industry Expertise"
-              desc="15 years of pharmacy data intelligence distilled into clear, actionable market views."
+              title="Trusted by Industry Leaders"
+              desc="15 years of pharmacy intelligence trusted by suppliers, wholesalers, and pharmacy groups to inform strategy worth millions."
               delay="0.7s"
             />
             <ValueProp
               icon={<BarChart3 className="w-5 h-5 text-emerald-400/80" />}
-              title="Unmatched Market Depth"
-              desc="$30B+ in pharmacy sales across 178K+ products — the most comprehensive view of Australian pharmacy available."
+              title="The Complete Picture"
+              desc="$30B+ across 178K+ products — Rx, OTC, and consumer health in one place. No other platform covers Australian pharmacy like this."
               delay="0.9s"
             />
           </div>
@@ -190,7 +190,7 @@ export function LoginPage() {
 
             <div className="flex items-center gap-3 mt-2" style={{ animation: 'hero-fade-in 0.6s ease-out both', animationDelay: '1.4s' }}>
               <Database className="w-3.5 h-3.5 text-blue-400" />
-              <span className="text-[11px] text-white/45 font-medium">15 years of pharmacy market intelligence</span>
+              <span className="text-[11px] text-white/45 font-medium">The must-have intelligence platform for Australian pharmacy</span>
             </div>
 
             {/* Footer */}

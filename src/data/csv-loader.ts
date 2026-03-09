@@ -1,6 +1,7 @@
 import type { EthRecord, EthSkuRecord, OTCRecord, CategorySummary } from './types'
 
 const BASE = import.meta.env.BASE_URL
+const CACHE_BUST = `?v=${__BUILD_TIME__}`
 
 // ── Interned JSON format helpers ──
 
@@ -17,19 +18,19 @@ function dict(d: Record<string, string[]>, key: string): string[] {
 // ── Tier 1: Category summaries (tiny, <1KB) ──
 
 export async function loadEthCategories(): Promise<CategorySummary[]> {
-  const resp = await fetch(`${BASE}data/eth-categories.json`)
+  const resp = await fetch(`${BASE}data/eth-categories.json${CACHE_BUST}`)
   return resp.json()
 }
 
 export async function loadOTCCategories(): Promise<CategorySummary[]> {
-  const resp = await fetch(`${BASE}data/otc-categories.json`)
+  const resp = await fetch(`${BASE}data/otc-categories.json${CACHE_BUST}`)
   return resp.json()
 }
 
 // ── Tier 2: SKU-level aggregates (small, ~3MB total) ──
 
 export async function loadEthSkuData(): Promise<EthSkuRecord[]> {
-  const resp = await fetch(`${BASE}data/eth-skus.json`)
+  const resp = await fetch(`${BASE}data/eth-skus.json${CACHE_BUST}`)
   const data: InternedData = await resp.json()
   const cat = dict(data.d, 'cat'), mfr = dict(data.d, 'mfr'), mol = dict(data.d, 'mol')
   return data.r.map(row => ({
@@ -45,7 +46,7 @@ export async function loadEthSkuData(): Promise<EthSkuRecord[]> {
 }
 
 export async function loadOTCSkuData(): Promise<OTCRecord[]> {
-  const resp = await fetch(`${BASE}data/otc-skus.json`)
+  const resp = await fetch(`${BASE}data/otc-skus.json${CACHE_BUST}`)
   const data: InternedData = await resp.json()
   const market = dict(data.d, 'market'), mfr = dict(data.d, 'mfr')
   return data.r.map(row => ({
@@ -62,7 +63,7 @@ export async function loadOTCSkuData(): Promise<OTCRecord[]> {
 // ── Tier 3: Monthly data (large, ~7MB — lazy loaded) ──
 
 export async function loadEthMonthlyData(): Promise<EthRecord[]> {
-  const resp = await fetch(`${BASE}data/eth-monthly.json`)
+  const resp = await fetch(`${BASE}data/eth-monthly.json${CACHE_BUST}`)
   const data: InternedData = await resp.json()
   const period = dict(data.d, 'period'), cat = dict(data.d, 'cat')
   const mfr = dict(data.d, 'mfr'), mol = dict(data.d, 'mol'), sku = dict(data.d, 'sku')
