@@ -115,12 +115,13 @@ export function RxWatchPage() {
       return { ...c, absChange: c.tyValue - c.lyValue, rising, declining, newProducts }
     })
 
-    const topRisers = [...allSkus].filter(s => s.absChange > 0 && s.lyValue > 5000).sort((a, b) => b.absChange - a.absChange).slice(0, 15)
-    const topDecliners = [...allSkus].filter(s => s.absChange < 0 && s.lyValue > 5000).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+    const chgKey = isValue ? 'absChange' : 'unitAbsChange' as const
+    const topRisers = [...allSkus].filter(s => s[chgKey] > 0 && s.lyValue > 5000).sort((a, b) => b[chgKey] - a[chgKey]).slice(0, 15)
+    const topDecliners = [...allSkus].filter(s => s[chgKey] < 0 && s.lyValue > 5000).sort((a, b) => a[chgKey] - b[chgKey]).slice(0, 15)
     const newEntrants = [...allSkus].filter(s => s.growth >= 900 && s.tyValue > 10000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 8)
 
     return { categories, topRisers, topDecliners, newEntrants, allSkus }
-  }, [state.ethSkus, ethCategories])
+  }, [state.ethSkus, ethCategories, isValue])
 
   // Derived
   const catGrowers = useMemo(() => watchData.categories.filter(c => c.absChange > 0 && c.lyValue > 10000).sort((a, b) => b.absChange - a.absChange), [watchData])
@@ -448,12 +449,12 @@ export function RxWatchPage() {
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-[10px] sm:text-[11px] font-semibold text-slate-800 truncate group-hover:text-blue-700">{c.category}</span>
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                          <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.absChange >= 0 ? '+' : ''}{formatCompactDollar(c.absChange)}
+                          <span className={`text-[10px] sm:text-[11px] font-bold ${(isValue ? c.absChange : (c.tyUnits - c.lyUnits)) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(isValue ? c.absChange : (c.tyUnits - c.lyUnits)) >= 0 ? '+' : ''}{fmt(isValue ? c.absChange : (c.tyUnits - c.lyUnits))}
                           </span>
-                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{formatCompactDollar(c.tyValue)}</span>
-                          <span className={`text-[9px] font-bold w-12 text-right ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(1)}%
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                          <span className={`text-[9px] font-bold w-12 text-right ${(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? '+' : ''}{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -485,7 +486,7 @@ export function RxWatchPage() {
                   <div>
                     <h4 className="text-sm font-bold text-slate-800">{catDetail.category}</h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {formatCompactDollar(catDetail.tyValue)} TY · <span className={catDetail.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}>{catDetail.valueGrowth >= 0 ? '+' : ''}{catDetail.valueGrowth.toFixed(1)}%</span> · {formatCompactDollar(Math.abs(catDetail.absChange))} {catDetail.absChange >= 0 ? 'gained' : 'lost'} · {catDetail.manufacturerCount} suppliers · {formatCompact(catDetail.skuCount)} SKUs
+                      {fmt(isValue ? catDetail.tyValue : catDetail.tyUnits)} TY · <span className={(isValue ? catDetail.valueGrowth : catDetail.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}>{(isValue ? catDetail.valueGrowth : catDetail.unitGrowth) >= 0 ? '+' : ''}{(isValue ? catDetail.valueGrowth : catDetail.unitGrowth).toFixed(1)}%</span> · {fmt(Math.abs(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)))} {(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)) >= 0 ? 'gained' : 'lost'} · {catDetail.manufacturerCount} suppliers · {formatCompact(catDetail.skuCount)} SKUs
                     </p>
                   </div>
                   <button onClick={() => navigate('/dispense', { state: { selectedCategory: catDetail.category } })} className="text-[9px] text-blue-600 font-semibold flex items-center gap-0.5 hover:underline shrink-0">
@@ -499,9 +500,9 @@ export function RxWatchPage() {
                 <div className="flex items-start gap-2">
                   <Sparkles className="w-3 h-3 text-blue-500 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-slate-600 leading-relaxed">
-                    {catDetail.category} {catDetail.valueGrowth >= 0 ? 'grew' : 'declined'} {Math.abs(catDetail.valueGrowth).toFixed(1)}% to {formatCompactDollar(catDetail.tyValue)}, {catDetail.absChange >= 0 ? 'adding' : 'losing'} {formatCompactDollar(Math.abs(catDetail.absChange))} in absolute value across {catDetail.manufacturerCount} suppliers and {formatCompact(catDetail.skuCount)} SKUs.
-                    {catDetail.rising.length > 0 && catDetail.rising[0] ? ` Growth is led by ${catDetail.rising[0].sku} (+${formatCompactDollar(catDetail.rising[0].absChange)}).` : ''}
-                    {catDetail.declining.length > 0 && catDetail.declining[0] ? ` Biggest decliner: ${catDetail.declining[0].sku} (${formatCompactDollar(catDetail.declining[0].absChange)}).` : ''}
+                    {catDetail.category} {(isValue ? catDetail.valueGrowth : catDetail.unitGrowth) >= 0 ? 'grew' : 'declined'} {Math.abs(isValue ? catDetail.valueGrowth : catDetail.unitGrowth).toFixed(1)}% to {fmt(isValue ? catDetail.tyValue : catDetail.tyUnits)}, {(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)) >= 0 ? 'adding' : 'losing'} {fmt(Math.abs(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)))} in absolute {isValue ? 'value' : 'volume'} across {catDetail.manufacturerCount} suppliers and {formatCompact(catDetail.skuCount)} SKUs.
+                    {catDetail.rising.length > 0 && catDetail.rising[0] ? ` Growth is led by ${catDetail.rising[0].sku} (+${fmt(isValue ? catDetail.rising[0].absChange : catDetail.rising[0].unitAbsChange)}).` : ''}
+                    {catDetail.declining.length > 0 && catDetail.declining[0] ? ` Biggest decliner: ${catDetail.declining[0].sku} (${fmt(isValue ? catDetail.declining[0].absChange : catDetail.declining[0].unitAbsChange)}).` : ''}
                     {catDetail.absChange >= 0
                       ? ' Suppliers should increase investment in this category to capture growth momentum.'
                       : ' Defensive strategies recommended — assess generic entry, channel dynamics, and promotional ROI.'}
@@ -523,7 +524,7 @@ export function RxWatchPage() {
                           <span className="text-[8px] font-bold text-emerald-400 w-3">{i + 1}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
-                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{fmt(isValue ? s.absChange : s.unitAbsChange)}</span>
                         </div>
                       ))}
                     </div>
@@ -542,7 +543,7 @@ export function RxWatchPage() {
                           <span className="text-[8px] font-bold text-red-400 w-3">{i + 1}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
-                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</span>
+                          <span className="text-[9px] font-bold text-red-500">{fmt(isValue ? s.absChange : s.unitAbsChange)}</span>
                         </div>
                       ))}
                     </div>
@@ -562,7 +563,7 @@ export function RxWatchPage() {
                       {catDetail.newProducts.map(n => (
                         <div key={n.sku} className="bg-white rounded-lg border border-blue-100 px-2.5 py-1.5 text-left">
                           <p className="text-[9px] font-medium text-slate-700 truncate max-w-[180px]">{n.sku}</p>
-                          <p className="text-[8px] text-blue-600 font-bold">{formatCompactDollar(n.tyValue)} <span className="text-slate-400 font-normal">· {n.manufacturer}</span></p>
+                          <p className="text-[8px] text-blue-600 font-bold">{fmt(isValue ? n.tyValue : n.tyUnits)} <span className="text-slate-400 font-normal">· {n.manufacturer}</span></p>
                         </div>
                       ))}
                     </div>
