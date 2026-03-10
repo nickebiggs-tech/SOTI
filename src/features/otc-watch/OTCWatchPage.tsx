@@ -11,6 +11,7 @@ import {
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar } from '../../lib/formatters'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 
 interface SkuItem {
   sku: string
@@ -76,6 +77,9 @@ export function OTCWatchPage() {
   const [narrativeOpen, setNarrativeOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'risers' | 'decliners' | 'all'>('all')
   const [search, setSearch] = useState('')
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
 
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
 
@@ -180,16 +184,19 @@ export function OTCWatchPage() {
           <span className="text-teal-600">OTC Watch</span>
           <span className="text-sm font-medium text-slate-400 ml-2">Consumer Health Product Monitor</span>
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
-          Products driving significant growth and those under channel pressure — category-level analysis with product drill-down
-        </p>
+        <div className="flex items-center justify-between mt-0.5 sm:mt-1">
+          <p className="text-xs sm:text-sm text-slate-500">
+            Products driving significant growth and those under channel pressure — category-level analysis with product drill-down
+          </p>
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="OTC Market" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
-        <KPICard title="Value Growth" value={formatCompactDollar(totalGrowing)} icon={<TrendingUp className="w-4 h-4 text-emerald-500" />} />
-        <KPICard title="Value at Risk" value={formatCompactDollar(totalDeclining)} icon={<TrendingDown className="w-4 h-4 text-red-500" />} />
+        <KPICard title="OTC Market" value={isValue ? formatCompactDollar(otcTotalTY) : formatCompact(otcCategories.reduce((s, c) => s + c.tyUnits, 0))} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'Value Growth' : 'Volume Growth'} value={fmt(totalGrowing)} icon={<TrendingUp className="w-4 h-4 text-emerald-500" />} />
+        <KPICard title={isValue ? 'Value at Risk' : 'Volume at Risk'} value={fmt(totalDeclining)} icon={<TrendingDown className="w-4 h-4 text-red-500" />} />
         <KPICard title="Suppliers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
       </div>
 
@@ -221,15 +228,15 @@ export function OTCWatchPage() {
             <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Value Migration</h3>
             <span className="text-[7px] sm:text-[8px] bg-teal-100 text-teal-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Top Gainers vs Losers</span>
           </div>
-          <p className="text-[9px] text-slate-500 mt-1">Absolute $ value change by category — green = growth, red = decline</p>
+          <p className="text-[9px] text-slate-500 mt-1">Absolute {isValue ? '$ value' : 'unit'} change by category — green = growth, red = decline</p>
         </div>
         <div className="p-3 sm:p-5">
           <ResponsiveContainer width="100%" height={380}>
             <BarChart data={waterfallData} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={160} />
-              <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
+              <Tooltip formatter={(v) => fmt(v as number)} />
               <Bar dataKey="gain" name="Value Gained" fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
               <Bar dataKey="loss" name="Value Lost" fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
             </BarChart>
@@ -242,21 +249,21 @@ export function OTCWatchPage() {
         <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-emerald-50/40">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Target className="w-4 h-4 text-teal-600 shrink-0" />
-            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Category Value Change ($)</h3>
-            <span className="text-[7px] sm:text-[8px] bg-teal-100 text-teal-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">YoY $ Change</span>
+            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">{isValue ? 'Category Value Change ($)' : 'Category Volume Change'}</h3>
+            <span className="text-[7px] sm:text-[8px] bg-teal-100 text-teal-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">YoY {isValue ? '$' : 'Unit'} Change</span>
           </div>
         </div>
         <div className="p-3 sm:p-5">
           <ResponsiveContainer width="100%" height={420}>
             <BarChart data={catChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={170} />
               <Tooltip
-                formatter={(v) => formatCompactDollar(v as number)}
+                formatter={(v) => fmt(v as number)}
                 labelFormatter={(label) => {
                   const item = catChartData.find(c => c.name === label)
-                  return item ? `${item.fullName} (TY: ${formatCompactDollar(item.tyValue)})` : String(label)
+                  return item ? `${item.fullName} (TY: ${fmt(item.tyValue)})` : String(label)
                 }}
               />
               <Bar dataKey="value" name="$ Change" radius={[0, 4, 4, 0]} animationDuration={800}>
@@ -288,8 +295,8 @@ export function OTCWatchPage() {
                     <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</p>
-                    <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)} TY</p>
+                    <p className="text-[10px] font-bold text-emerald-600">+{fmt(s.absChange)}</p>
+                    <p className="text-[8px] text-slate-400">{fmt(s.tyValue)} TY</p>
                   </div>
                   <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 group-hover:text-emerald-500" />
                 </button>
@@ -297,7 +304,7 @@ export function OTCWatchPage() {
             </div>
             <div className="mt-3 p-2.5 bg-emerald-50/60 rounded-lg">
               <p className="text-[9px] text-emerald-700/80 leading-relaxed">
-                Combined value addition: <span className="font-bold">{formatCompactDollar(totalGrowing)}</span>. Prioritise pharmacy-exclusive promotions, pharmacist recommendation programs, and shelf-space optimisation.
+                Combined {isValue ? 'value' : 'volume'} addition: <span className="font-bold">{fmt(totalGrowing)}</span>. Prioritise pharmacy-exclusive promotions, pharmacist recommendation programs, and shelf-space optimisation.
               </p>
             </div>
           </div>
@@ -322,8 +329,8 @@ export function OTCWatchPage() {
                     <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</p>
-                    <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)} TY</p>
+                    <p className="text-[10px] font-bold text-red-500">{fmt(s.absChange)}</p>
+                    <p className="text-[8px] text-slate-400">{fmt(s.tyValue)} TY</p>
                   </div>
                   <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 group-hover:text-red-500" />
                 </button>
@@ -331,7 +338,7 @@ export function OTCWatchPage() {
             </div>
             <div className="mt-3 p-2.5 bg-red-50/60 rounded-lg">
               <p className="text-[9px] text-red-600/80 leading-relaxed">
-                Combined value erosion: <span className="font-bold">{formatCompactDollar(totalDeclining)}</span>. Channel leakage to online/grocery is the primary threat. Defensive strategy: loyalty programs, pharmacist recommendation incentives, pharmacy-exclusive formulations.
+                Combined {isValue ? 'value' : 'volume'} erosion: <span className="font-bold">{fmt(totalDeclining)}</span>. Channel leakage to online/grocery is the primary threat. Defensive strategy: loyalty programs, pharmacist recommendation incentives, pharmacy-exclusive formulations.
               </p>
             </div>
           </div>
@@ -356,7 +363,7 @@ export function OTCWatchPage() {
                   <p className="text-[10px] font-semibold text-slate-700 truncate group-hover:text-teal-700">{n.sku}</p>
                   <p className="text-[8px] text-slate-400 truncate mt-0.5">{n.manufacturer}</p>
                   <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-teal-100">
-                    <span className="text-[10px] font-bold text-teal-600">{formatCompactDollar(n.tyValue)}</span>
+                    <span className="text-[10px] font-bold text-teal-600">{fmt(n.tyValue)}</span>
                     <span className="text-[8px] text-slate-400">{n.category.length > 15 ? n.category.slice(0, 13) + '...' : n.category}</span>
                   </div>
                 </button>
@@ -429,9 +436,9 @@ export function OTCWatchPage() {
                         <span className="text-[10px] sm:text-[11px] font-semibold text-slate-800 truncate group-hover:text-teal-700">{c.category}</span>
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.absChange >= 0 ? '+' : ''}{formatCompactDollar(c.absChange)}
+                            {c.absChange >= 0 ? '+' : ''}{fmt(c.absChange)}
                           </span>
-                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{formatCompactDollar(c.tyValue)}</span>
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{fmt(c.tyValue)}</span>
                           <span className={`text-[9px] font-bold w-12 text-right ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                             {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(1)}%
                           </span>
@@ -465,7 +472,7 @@ export function OTCWatchPage() {
                   <div>
                     <h4 className="text-sm font-bold text-slate-800">{catDetail.category}</h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {formatCompactDollar(catDetail.tyValue)} TY · <span className={catDetail.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}>{catDetail.valueGrowth >= 0 ? '+' : ''}{catDetail.valueGrowth.toFixed(1)}%</span> · {formatCompactDollar(Math.abs(catDetail.absChange))} {catDetail.absChange >= 0 ? 'gained' : 'lost'} · {catDetail.manufacturerCount} suppliers · {formatCompact(catDetail.skuCount)} SKUs
+                      {fmt(isValue ? catDetail.tyValue : catDetail.tyUnits)} TY · <span className={catDetail.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}>{catDetail.valueGrowth >= 0 ? '+' : ''}{(isValue ? catDetail.valueGrowth : catDetail.unitGrowth).toFixed(1)}%</span> · {fmt(Math.abs(catDetail.absChange))} {catDetail.absChange >= 0 ? 'gained' : 'lost'} · {catDetail.manufacturerCount} suppliers · {formatCompact(catDetail.skuCount)} SKUs
                     </p>
                   </div>
                   <button onClick={() => navigate('/otc', { state: { selectedCategory: catDetail.category } })} className="text-[9px] text-teal-600 font-semibold flex items-center gap-0.5 hover:underline shrink-0">
@@ -479,9 +486,9 @@ export function OTCWatchPage() {
                 <div className="flex items-start gap-2">
                   <Sparkles className="w-3 h-3 text-teal-500 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-slate-600 leading-relaxed">
-                    {catDetail.category} {catDetail.valueGrowth >= 0 ? 'grew' : 'declined'} {Math.abs(catDetail.valueGrowth).toFixed(1)}% to {formatCompactDollar(catDetail.tyValue)}, {catDetail.absChange >= 0 ? 'adding' : 'losing'} {formatCompactDollar(Math.abs(catDetail.absChange))} in absolute value across {catDetail.manufacturerCount} suppliers and {formatCompact(catDetail.skuCount)} SKUs.
-                    {catDetail.rising.length > 0 && catDetail.rising[0] ? ` Growth is led by ${catDetail.rising[0].sku} (+${formatCompactDollar(catDetail.rising[0].absChange)}).` : ''}
-                    {catDetail.declining.length > 0 && catDetail.declining[0] ? ` Biggest decliner: ${catDetail.declining[0].sku} (${formatCompactDollar(catDetail.declining[0].absChange)}).` : ''}
+                    {catDetail.category} {catDetail.valueGrowth >= 0 ? 'grew' : 'declined'} {Math.abs(isValue ? catDetail.valueGrowth : catDetail.unitGrowth).toFixed(1)}% to {fmt(isValue ? catDetail.tyValue : catDetail.tyUnits)}, {catDetail.absChange >= 0 ? 'adding' : 'losing'} {fmt(Math.abs(catDetail.absChange))} in absolute {isValue ? 'value' : 'volume'} across {catDetail.manufacturerCount} suppliers and {formatCompact(catDetail.skuCount)} SKUs.
+                    {catDetail.rising.length > 0 && catDetail.rising[0] ? ` Growth is led by ${catDetail.rising[0].sku} (+${fmt(catDetail.rising[0].absChange)}).` : ''}
+                    {catDetail.declining.length > 0 && catDetail.declining[0] ? ` Biggest decliner: ${catDetail.declining[0].sku} (${fmt(catDetail.declining[0].absChange)}).` : ''}
                     {catDetail.absChange >= 0
                       ? ' Invest in pharmacy-exclusive promotions and pharmacist recommendation programs to capture growth.'
                       : ' Defensive strategy recommended — assess online channel leakage, promotional fatigue, and competitive displacement.'}
@@ -502,7 +509,7 @@ export function OTCWatchPage() {
                           <span className="text-[8px] font-bold text-emerald-400 w-3">{i + 1}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
-                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{fmt(s.absChange)}</span>
                         </div>
                       ))}
                     </div>
@@ -520,7 +527,7 @@ export function OTCWatchPage() {
                           <span className="text-[8px] font-bold text-red-400 w-3">{i + 1}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
-                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</span>
+                          <span className="text-[9px] font-bold text-red-500">{fmt(s.absChange)}</span>
                         </div>
                       ))}
                     </div>
@@ -539,7 +546,7 @@ export function OTCWatchPage() {
                       {catDetail.newProducts.map(n => (
                         <div key={n.sku} className="bg-white rounded-lg border border-teal-100 px-2.5 py-1.5 text-left">
                           <p className="text-[9px] font-medium text-slate-700 truncate max-w-[180px]">{n.sku}</p>
-                          <p className="text-[8px] text-teal-600 font-bold">{formatCompactDollar(n.tyValue)} <span className="text-slate-400 font-normal">· {n.manufacturer}</span></p>
+                          <p className="text-[8px] text-teal-600 font-bold">{fmt(n.tyValue)} <span className="text-slate-400 font-normal">· {n.manufacturer}</span></p>
                         </div>
                       ))}
                     </div>
