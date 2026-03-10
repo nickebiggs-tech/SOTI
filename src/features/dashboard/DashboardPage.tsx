@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
 const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
@@ -65,6 +66,7 @@ export function DashboardPage() {
   const { ethCategories, otcCategories, ethTotalTY, ethTotalLY, otcTotalTY, otcTotalLY, state } = useData()
   const navigate = useNavigate()
   const [narrativeOpen, setNarrativeOpen] = useState(false)
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
@@ -77,14 +79,27 @@ export function DashboardPage() {
   const ethMfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
   const otcMfrCount = useMemo(() => new Set(state.otc.map(r => r.manufacturer)).size, [state.otc])
 
+  const ethTotalTYUnits = useMemo(() => ethCategories.reduce((s, c) => s + c.tyUnits, 0), [ethCategories])
+  const ethTotalLYUnits = useMemo(() => ethCategories.reduce((s, c) => s + c.lyUnits, 0), [ethCategories])
+  const otcTotalTYUnits = useMemo(() => otcCategories.reduce((s, c) => s + c.tyUnits, 0), [otcCategories])
+  const otcTotalLYUnits = useMemo(() => otcCategories.reduce((s, c) => s + c.lyUnits, 0), [otcCategories])
+  const ethUnitGrowth = ethTotalLYUnits ? ((ethTotalTYUnits - ethTotalLYUnits) / ethTotalLYUnits) * 100 : 0
+  const otcUnitGrowth = otcTotalLYUnits ? ((otcTotalTYUnits - otcTotalLYUnits) / otcTotalLYUnits) * 100 : 0
+  const totalUnits = ethTotalTYUnits + otcTotalTYUnits
+  const totalUnitsLY = ethTotalLYUnits + otcTotalLYUnits
+  const totalUnitGrowth = totalUnitsLY ? ((totalUnits - totalUnitsLY) / totalUnitsLY) * 100 : 0
+
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
+
   // Top 10 categories for each
-  const ethTop10 = ethCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, fullName: c.category, value: Math.round(c.tyValue), growth: Math.round(c.valueGrowth * 10) / 10 }))
-  const otcTop10 = otcCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, fullName: c.category, value: Math.round(c.tyValue), growth: Math.round(c.valueGrowth * 10) / 10 }))
+  const ethTop10 = ethCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, fullName: c.category, value: Math.round(isValue ? c.tyValue : c.tyUnits), growth: Math.round((isValue ? c.valueGrowth : c.unitGrowth) * 10) / 10 }))
+  const otcTop10 = otcCategories.slice(0, 10).map(c => ({ name: c.category.length > 25 ? c.category.slice(0, 22) + '...' : c.category, fullName: c.category, value: Math.round(isValue ? c.tyValue : c.tyUnits), growth: Math.round((isValue ? c.valueGrowth : c.unitGrowth) * 10) / 10 }))
 
   // Market split donut
   const marketSplit = [
-    { name: 'Dispense (Rx)', value: Math.round(ethTotalTY) },
-    { name: 'OTC / Front of Shop', value: Math.round(otcTotalTY) },
+    { name: 'Dispense (Rx)', value: Math.round(isValue ? ethTotalTY : ethTotalTYUnits) },
+    { name: 'OTC / Front of Shop', value: Math.round(isValue ? otcTotalTY : otcTotalTYUnits) },
   ]
 
   // Auto-narrative
@@ -108,20 +123,26 @@ export function DashboardPage() {
     return state.ethSkus.map(r => ({
       name: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
       tyValue: r.tyValue, lyValue: r.lyValue,
+      tyUnits: r.tyUnits, lyUnits: r.lyUnits,
       growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
       absChange: r.tyValue - r.lyValue,
-    })).sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
-  }, [state.ethSkus])
+      absUnitChange: r.tyUnits - r.lyUnits,
+    })).sort((a, b) => isValue ? b.tyValue - a.tyValue : b.tyUnits - a.tyUnits).slice(0, 10)
+  }, [state.ethSkus, isValue])
 
   // Top OTC Items
   const topOtcItems = useMemo(() => {
     return [...state.otc].map(r => ({
       name: r.packName, category: r.market, manufacturer: r.manufacturer,
       tyValue: r.tyValue, lyValue: r.lyValue,
+      tyUnits: r.tyUnits, lyUnits: r.lyUnits,
       growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
       absChange: r.tyValue - r.lyValue,
-    })).sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
-  }, [state.otc])
+      absUnitChange: r.tyUnits - r.lyUnits,
+    })).sort((a, b) => isValue ? b.tyValue - a.tyValue : b.tyUnits - a.tyUnits).slice(0, 10)
+  }, [state.otc, isValue])
 
   const activeSkuList = dashSkuTab === 'rx' ? topRxSkus : topOtcItems
 
@@ -238,13 +259,16 @@ export function DashboardPage() {
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
           Australian pharmacy market — Dispense & OTC combined view
         </p>
+        <div className="flex items-center gap-3 mt-2">
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
       </div>
 
       {/* Macro KPIs — all $ */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="Total Market" value={formatCompactDollar(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<DollarSign className="w-4 h-4" />} />
-        <KPICard title="Dispense (Rx)" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
-        <KPICard title="OTC / FoS" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
+        <KPICard title="Total Market" value={fmt(isValue ? totalMarket : totalUnits)} delta={isValue ? totalGrowth : totalUnitGrowth} deltaLabel="YoY" icon={<DollarSign className="w-4 h-4" />} />
+        <KPICard title="Dispense (Rx)" value={fmt(isValue ? ethTotalTY : ethTotalTYUnits)} delta={isValue ? ethGrowth : ethUnitGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
+        <KPICard title="OTC / FoS" value={fmt(isValue ? otcTotalTY : otcTotalTYUnits)} delta={isValue ? otcGrowth : otcUnitGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Total SKUs" value={formatCompact(ethSkuCount + otcSkuCount)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={formatCompact(ethMfrCount + otcMfrCount)} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="Rx Categories" value={`${ethCategories.length}`} icon={<FlaskConical className="w-4 h-4" />} />
@@ -260,8 +284,8 @@ export function DashboardPage() {
             {rxGrowers.map((c) => (
               <button key={c.category} onClick={() => navigate('/dispense', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
-                <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
-                <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
+                <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                <span className="text-[10px] font-bold text-emerald-600">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
@@ -274,8 +298,8 @@ export function DashboardPage() {
             {rxDecliners.map((c) => (
               <button key={c.category} onClick={() => navigate('/dispense', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
-                <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
-                <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
+                <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                <span className="text-[10px] font-bold text-red-500">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
@@ -288,8 +312,8 @@ export function DashboardPage() {
             {otcGrowers.map((c) => (
               <button key={c.category} onClick={() => navigate('/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
-                <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
-                <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
+                <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                <span className="text-[10px] font-bold text-emerald-600">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
@@ -302,8 +326,8 @@ export function DashboardPage() {
             {otcDecliners.map((c) => (
               <button key={c.category} onClick={() => navigate('/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
-                <span className="text-[9px] text-slate-400">{formatCompactDollar(c.tyValue)}</span>
-                <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
+                <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                <span className="text-[10px] font-bold text-red-500">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
@@ -366,7 +390,7 @@ export function DashboardPage() {
                 <Cell fill="#2563EB" />
                 <Cell fill="#0D9488" />
               </Pie>
-              <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
+              <Tooltip formatter={(value) => isValue ? formatCurrency(Number(value ?? 0)) : formatCompact(Number(value ?? 0))} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -375,7 +399,7 @@ export function DashboardPage() {
         {/* Top Rx categories */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-700">Top Rx by Value</h3>
+            <h3 className="text-sm font-semibold text-slate-700">{isValue ? 'Top Rx by Value' : 'Top Rx by Volume'}</h3>
             <button onClick={() => navigate('/dispense')} className="text-[10px] text-primary font-medium flex items-center gap-0.5">
               View all <ArrowRight className="w-3 h-3" />
             </button>
@@ -385,7 +409,7 @@ export function DashboardPage() {
               <button key={c.name} onClick={() => navigate('/dispense', { state: { selectedCategory: c.fullName } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.name}</span>
-                <span className="text-[10px] font-semibold text-slate-700">{formatCompactDollar(c.value)}</span>
+                <span className="text-[10px] font-semibold text-slate-700">{fmt(c.value)}</span>
                 <span className={`text-[9px] font-bold w-12 text-right ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {c.growth >= 0 ? '+' : ''}{c.growth}%
                 </span>
@@ -397,7 +421,7 @@ export function DashboardPage() {
         {/* Top OTC categories */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-700">Top OTC by Value</h3>
+            <h3 className="text-sm font-semibold text-slate-700">{isValue ? 'Top OTC by Value' : 'Top OTC by Volume'}</h3>
             <button onClick={() => navigate('/otc')} className="text-[10px] text-primary font-medium flex items-center gap-0.5">
               View all <ArrowRight className="w-3 h-3" />
             </button>
@@ -407,7 +431,7 @@ export function DashboardPage() {
               <button key={c.name} onClick={() => navigate('/otc', { state: { selectedCategory: c.fullName } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.name}</span>
-                <span className="text-[10px] font-semibold text-slate-700">{formatCompactDollar(c.value)}</span>
+                <span className="text-[10px] font-semibold text-slate-700">{fmt(c.value)}</span>
                 <span className={`text-[9px] font-bold w-12 text-right ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                   {c.growth >= 0 ? '+' : ''}{c.growth}%
                 </span>
@@ -420,13 +444,13 @@ export function DashboardPage() {
       {/* Full-width category value bars */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 stagger-fast">
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">Dispense — Category Value ($)</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">{isValue ? 'Dispense — Category Value ($)' : 'Dispense — Category Volume (Units)'}</h3>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={ethTop10} layout="vertical" margin={{ left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
-              <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
               <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={1000} animationEasing="ease-out">
                 {ethTop10.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
@@ -435,13 +459,13 @@ export function DashboardPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-5 chart-card">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4">OTC — Category Value ($)</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-4">{isValue ? 'OTC — Category Value ($)' : 'OTC — Category Volume (Units)'}</h3>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={otcTop10} layout="vertical" margin={{ left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
-              <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
               <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={1000} animationEasing="ease-out">
                 {otcTop10.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
@@ -456,7 +480,7 @@ export function DashboardPage() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <BarChart3 className="w-4 h-4 text-violet-600 shrink-0" />
             <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Top SKUs & Items</h3>
-            <span className="text-[7px] sm:text-[8px] bg-violet-100 text-violet-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">By Value</span>
+            <span className="text-[7px] sm:text-[8px] bg-violet-100 text-violet-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">{isValue ? 'By Value' : 'By Volume'}</span>
           </div>
         </div>
         <div className="flex border-b border-slate-100">
@@ -485,8 +509,8 @@ export function DashboardPage() {
                 <th className="text-left py-2 text-slate-500 font-medium">{dashSkuTab === 'rx' ? 'SKU' : 'Item'}</th>
                 <th className="text-left py-2 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
                 <th className="text-left py-2 text-slate-500 font-medium w-24 hidden lg:table-cell">Category</th>
-                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">Value</th>
-                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">$ Change</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">{isValue ? 'Value' : 'Units'}</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">{isValue ? '$ Change' : 'Unit Chg'}</th>
                 <th className="text-right py-2 text-slate-500 font-medium w-14 sm:w-16">Growth</th>
               </tr>
             </thead>
@@ -502,12 +526,12 @@ export function DashboardPage() {
                   <td className="py-2.5 sm:py-2 text-slate-700 truncate max-w-[120px] sm:max-w-[220px] font-medium group-hover:text-violet-700">{s.name}</td>
                   <td className="py-2.5 sm:py-2 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
                   <td className="py-2.5 sm:py-2 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
-                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                  <td className={`text-right py-2.5 sm:py-2 font-bold ${s.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {s.absChange >= 0 ? '+' : ''}{formatCompactDollar(s.absChange)}
+                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{fmt(isValue ? s.tyValue : s.tyUnits)}</td>
+                  <td className={`text-right py-2.5 sm:py-2 font-bold ${(isValue ? s.absChange : s.absUnitChange) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {(isValue ? s.absChange : s.absUnitChange) >= 0 ? '+' : ''}{fmt(isValue ? s.absChange : s.absUnitChange)}
                   </td>
-                  <td className={`text-right py-2.5 sm:py-2 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
-                    {s.growth >= 900 ? 'New' : `${s.growth >= 0 ? '+' : ''}${s.growth.toFixed(0)}%`}
+                  <td className={`text-right py-2.5 sm:py-2 font-bold ${(isValue ? s.growth : s.unitGrowth) >= 0 && (isValue ? s.growth : s.unitGrowth) < 900 ? 'text-emerald-600' : (isValue ? s.growth : s.unitGrowth) >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {(isValue ? s.growth : s.unitGrowth) >= 900 ? 'New' : `${(isValue ? s.growth : s.unitGrowth) >= 0 ? '+' : ''}${(isValue ? s.growth : s.unitGrowth).toFixed(0)}%`}
                   </td>
                 </tr>
               ))}

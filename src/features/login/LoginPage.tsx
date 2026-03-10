@@ -55,12 +55,12 @@ function HeroStat({ numericValue, prefix = '', suffix = '', label, sublabel, col
       {/* Background glow */}
       <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" style={{ backgroundColor: color }} />
 
-      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold mb-3" style={{ color: `${color}CC` }}>{label}</p>
-      <p className="hero-stat-value text-5xl xl:text-6xl font-black text-white tracking-tighter leading-none">
-        {prefix}{decimals > 0 ? count.toFixed(decimals) : count}<span className="text-3xl xl:text-4xl text-white/70">{suffix}</span>
+      <p className="text-[11px] uppercase tracking-[0.15em] font-bold mb-3" style={{ color: color, textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>{label}</p>
+      <p className="hero-stat-value text-5xl xl:text-6xl font-black text-white tracking-tighter leading-none" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+        {prefix}{decimals > 0 ? count.toFixed(decimals) : count}<span className="text-3xl xl:text-4xl text-white/80">{suffix}</span>
       </p>
       {sublabel && (
-        <p className="text-[11px] text-white/65 mt-3 font-medium">{sublabel}</p>
+        <p className="text-[11px] text-white/85 mt-3 font-medium" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>{sublabel}</p>
       )}
     </div>
   )
@@ -95,9 +95,9 @@ function MobileHeroStat({ numericValue, prefix = '', suffix = '', label, color, 
       style={{ animation: 'hero-stat-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both', animationDelay: `${delay}ms` }}
     >
       <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: color }} />
-      <p className="text-[9px] uppercase tracking-[0.12em] font-semibold mb-1.5" style={{ color: `${color}CC` }}>{label}</p>
-      <p className="text-white text-3xl sm:text-4xl font-black tracking-tighter leading-none hero-stat-value">
-        {prefix}{decimals > 0 ? count.toFixed(decimals) : count}<span className="text-xl text-white/60">{suffix}</span>
+      <p className="text-[9px] uppercase tracking-[0.12em] font-bold mb-1.5" style={{ color, textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>{label}</p>
+      <p className="text-white text-3xl sm:text-4xl font-black tracking-tighter leading-none hero-stat-value" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+        {prefix}{decimals > 0 ? count.toFixed(decimals) : count}<span className="text-xl text-white/80">{suffix}</span>
       </p>
     </div>
   )
