@@ -10,7 +10,8 @@ import {
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
-import { formatCompact, formatCurrency } from '../../lib/formatters'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
+import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 type SeasonalGroup = 'cold-flu' | 'allergy' | 'skin-sun' | 'pain-sport'
@@ -423,6 +424,10 @@ function monthLabel(monthId: number): string {
 export function SeasonalityPage() {
   const { state, loadMonthlyData } = useData()
 
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
+
   const [narrativeOpen, setNarrativeOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
@@ -432,25 +437,53 @@ export function SeasonalityPage() {
 
   const ethMonthly = state.ethMonthly
 
-  /* ── Monthly aggregation by seasonal group ─────────────────────────── */
-  const monthlyByGroup = useMemo(() => {
+  /* ── Monthly aggregation by seasonal group (both value & units) ──── */
+  interface MonthlyGroupRow {
+    monthId: number
+    monthLabel: string
+    calMonth: number
+    'cold-flu': number
+    'allergy': number
+    'skin-sun': number
+    'pain-sport': number
+    'cold-flu-u': number
+    'allergy-u': number
+    'skin-sun-u': number
+    'pain-sport-u': number
+  }
+
+  const monthlyByGroupRaw = useMemo((): MonthlyGroupRow[] => {
     if (!ethMonthly) return []
-    const map: Record<number, Record<SeasonalGroup, number>> = {}
+    const map: Record<number, MonthlyGroupRow> = {}
     ethMonthly.forEach(r => {
       const group = SEASONAL_CATEGORY_MAP[r.category]
       if (!group) return
-      if (!map[r.monthId]) map[r.monthId] = { 'cold-flu': 0, 'allergy': 0, 'skin-sun': 0, 'pain-sport': 0 }
+      if (!map[r.monthId]) {
+        const mid = r.monthId
+        map[mid] = {
+          monthId: mid, monthLabel: monthLabel(mid), calMonth: parseInt(String(mid).slice(4), 10),
+          'cold-flu': 0, 'allergy': 0, 'skin-sun': 0, 'pain-sport': 0,
+          'cold-flu-u': 0, 'allergy-u': 0, 'skin-sun-u': 0, 'pain-sport-u': 0,
+        }
+      }
       map[r.monthId]![group] += r.sales
+      const unitKey = `${group}-u` as 'cold-flu-u' | 'allergy-u' | 'skin-sun-u' | 'pain-sport-u'
+      map[r.monthId]![unitKey] += r.units
     })
-    return Object.entries(map)
-      .map(([id, groups]) => ({
-        monthId: parseInt(id, 10),
-        monthLabel: monthLabel(parseInt(id, 10)),
-        calMonth: parseInt(id.slice(4), 10),
-        ...groups,
-      }))
-      .sort((a, b) => a.monthId - b.monthId)
+    return Object.values(map).sort((a, b) => a.monthId - b.monthId)
   }, [ethMonthly])
+
+  // Projected view based on toggle
+  const monthlyByGroup = useMemo((): MonthlyGroupRow[] => {
+    if (isValue) return monthlyByGroupRaw
+    return monthlyByGroupRaw.map(m => ({
+      ...m,
+      'cold-flu': m['cold-flu-u'],
+      'allergy': m['allergy-u'],
+      'skin-sun': m['skin-sun-u'],
+      'pain-sport': m['pain-sport-u'],
+    }))
+  }, [monthlyByGroupRaw, isValue])
 
   /* ── Seasonal indices (peak / trough per group) ────────────────────── */
   const seasonalIndices = useMemo(() => {
@@ -482,12 +515,16 @@ export function SeasonalityPage() {
     if (!selectedCategory) return []
     if (!ethMonthly) return []
     const catData = ethMonthly.filter(r => r.category === selectedCategory)
-    const map: Record<number, number> = {}
-    catData.forEach(r => { map[r.monthId] = (map[r.monthId] ?? 0) + r.sales })
+    const map: Record<number, { sales: number; units: number }> = {}
+    catData.forEach(r => {
+      if (!map[r.monthId]) map[r.monthId] = { sales: 0, units: 0 }
+      map[r.monthId]!.sales += r.sales
+      map[r.monthId]!.units += r.units
+    })
     return Object.entries(map)
-      .map(([id, sales]) => ({ monthId: parseInt(id, 10), month: monthLabel(parseInt(id, 10)), sales }))
+      .map(([id, d]) => ({ monthId: parseInt(id, 10), month: monthLabel(parseInt(id, 10)), sales: isValue ? d.sales : d.units }))
       .sort((a, b) => a.monthId - b.monthId)
-  }, [selectedCategory, ethMonthly])
+  }, [selectedCategory, ethMonthly, isValue])
 
   /* ── Category deep-dive KPIs ───────────────────────────────────────── */
   const categoryKPIs = useMemo(() => {
@@ -543,7 +580,10 @@ export function SeasonalityPage() {
           <span className="text-base font-extrabold tracking-tight"><span className="text-primary">SOTI</span></span>
           <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-widest border border-slate-200 rounded px-1.5 py-0.5">Seasonality</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">Seasonality & Marketing Activations</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">Seasonality & Marketing Activations</h1>
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Seasonal demand patterns &middot; marketing activation calendar &middot; Instagram & TikTok strategy</p>
       </div>
 
@@ -587,7 +627,7 @@ export function SeasonalityPage() {
             ))}
           </div>
         </div>
-        <p className="text-[8px] sm:text-[9px] text-slate-400 mb-3 italic">Based on Rx dispensing data — 141K records across 24 months. Shaded bands show Australian seasons.</p>
+        <p className="text-[8px] sm:text-[9px] text-slate-400 mb-3 italic">Based on Rx dispensing data — 141K records across 24 months. Shaded bands show Australian seasons. Showing {isValue ? 'value ($)' : 'volume (units)'}.</p>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={monthlyByGroup} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             {/* Season band overlays */}
@@ -605,8 +645,8 @@ export function SeasonalityPage() {
             })}
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="monthLabel" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={2} />
-            <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-            <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+            <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
+            <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
             <Line type="monotone" dataKey="cold-flu" name="Cold & Flu" stroke="#2563EB" strokeWidth={2} dot={{ r: 1.5 }} />
             <Line type="monotone" dataKey="allergy" name="Allergy" stroke="#059669" strokeWidth={2} dot={{ r: 1.5 }} />
             <Line type="monotone" dataKey="skin-sun" name="Skin & Sun" stroke="#D97706" strokeWidth={2} dot={{ r: 1.5 }} />
@@ -710,9 +750,9 @@ export function SeasonalityPage() {
               <LineChart data={categoryMonthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={2} />
-                <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
+                <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
+                <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                <Line type="monotone" dataKey="sales" name={isValue ? 'Value' : 'Units'} stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
               </LineChart>
             </ResponsiveContainer>
           </div>
