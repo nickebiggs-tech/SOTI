@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 
 const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
@@ -102,45 +103,62 @@ const STRATEGIC_THEMES: ThemeCard[] = [
 export function InsightsPage() {
   const { ethCategories, otcCategories, ethTotalTY, ethTotalLY, otcTotalTY, otcTotalLY, state } = useData()
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
   const navigate = useNavigate()
 
-  const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
-  const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
-  const totalMarket = ethTotalTY + otcTotalTY
-  const totalMarketLY = ethTotalLY + otcTotalLY
+  // Unit totals
+  const ethTotalTYUnits = ethCategories.reduce((s, c) => s + c.tyUnits, 0)
+  const ethTotalLYUnits = ethCategories.reduce((s, c) => s + c.lyUnits, 0)
+  const otcTotalTYUnits = otcCategories.reduce((s, c) => s + c.tyUnits, 0)
+  const otcTotalLYUnits = otcCategories.reduce((s, c) => s + c.lyUnits, 0)
+
+  const ethTY = isValue ? ethTotalTY : ethTotalTYUnits
+  const ethLY = isValue ? ethTotalLY : ethTotalLYUnits
+  const otcTY = isValue ? otcTotalTY : otcTotalTYUnits
+  const otcLY = isValue ? otcTotalLY : otcTotalLYUnits
+
+  const ethGrowth = ethLY ? ((ethTY - ethLY) / ethLY) * 100 : 0
+  const otcGrowth = otcLY ? ((otcTY - otcLY) / otcLY) * 100 : 0
+  const totalMarket = ethTY + otcTY
+  const totalMarketLY = ethLY + otcLY
   const totalGrowth = totalMarketLY ? ((totalMarket - totalMarketLY) / totalMarketLY) * 100 : 0
 
   // Rx vs OTC comparison
   const marketComparison = [
-    { name: 'Dispense (Rx)', ty: Math.round(ethTotalTY), ly: Math.round(ethTotalLY) },
-    { name: 'OTC / FoS', ty: Math.round(otcTotalTY), ly: Math.round(otcTotalLY) },
+    { name: 'Dispense (Rx)', ty: Math.round(ethTY), ly: Math.round(ethLY) },
+    { name: 'OTC / FoS', ty: Math.round(otcTY), ly: Math.round(otcLY) },
   ]
 
   // Top growing categories combined
   const topGrowing = useMemo(() => {
     const all = [
-      ...ethCategories.filter(c => c.lyValue > 10000).map(c => ({ ...c, segment: 'Rx' as const })),
-      ...otcCategories.filter(c => c.lyValue > 50000).map(c => ({ ...c, segment: 'OTC' as const })),
+      ...ethCategories.filter(c => (isValue ? c.lyValue : c.lyUnits) > (isValue ? 10000 : 100)).map(c => ({ ...c, segment: 'Rx' as const })),
+      ...otcCategories.filter(c => (isValue ? c.lyValue : c.lyUnits) > (isValue ? 50000 : 500)).map(c => ({ ...c, segment: 'OTC' as const })),
     ]
-    return all.sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 8)
-  }, [ethCategories, otcCategories])
+    const growthKey = isValue ? 'valueGrowth' : 'unitGrowth'
+    return all.sort((a, b) => b[growthKey] - a[growthKey]).slice(0, 8)
+  }, [ethCategories, otcCategories, isValue])
 
   const topDeclining = useMemo(() => {
     const all = [
-      ...ethCategories.filter(c => c.lyValue > 10000).map(c => ({ ...c, segment: 'Rx' as const })),
-      ...otcCategories.filter(c => c.lyValue > 50000).map(c => ({ ...c, segment: 'OTC' as const })),
+      ...ethCategories.filter(c => (isValue ? c.lyValue : c.lyUnits) > (isValue ? 10000 : 100)).map(c => ({ ...c, segment: 'Rx' as const })),
+      ...otcCategories.filter(c => (isValue ? c.lyValue : c.lyUnits) > (isValue ? 50000 : 500)).map(c => ({ ...c, segment: 'OTC' as const })),
     ]
-    return all.sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 8)
-  }, [ethCategories, otcCategories])
+    const growthKey = isValue ? 'valueGrowth' : 'unitGrowth'
+    return all.sort((a, b) => a[growthKey] - b[growthKey]).slice(0, 8)
+  }, [ethCategories, otcCategories, isValue])
 
   // Auto-narrative — commercial framing
   const heroNarrative = useMemo(() => {
     const dir = totalGrowth >= 0 ? 'grew' : 'contracted'
     const rxDir = ethGrowth >= 0 ? 'expanding' : 'declining'
     const otcDir = otcGrowth >= 0 ? 'recovering' : 'softening'
-    const totalDelta = Math.abs(totalMarket - (ethTotalLY + otcTotalLY))
-    return `The Australian pharmacy industry ${dir} ${Math.abs(totalGrowth).toFixed(1)}% to ${formatCompactDollar(totalMarket)} (${totalGrowth >= 0 ? '+' : '-'}${formatCompactDollar(totalDelta)} net), with prescription sales ${rxDir} at ${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% (${formatCompactDollar(ethTotalTY)}) and OTC ${otcDir} at ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% (${formatCompactDollar(otcTotalTY)}). This intelligence platform synthesises ${formatCompact(state.ethSkus.length + state.otc.length)} product-level records into commercially actionable insights for pharma executives, suppliers, and pharmacy groups.`
-  }, [totalGrowth, totalMarket, ethGrowth, ethTotalTY, ethTotalLY, otcGrowth, otcTotalTY, otcTotalLY, state.ethSkus.length, state.otc.length])
+    const totalDelta = Math.abs(totalMarket - totalMarketLY)
+    const metricLabel = isValue ? 'value' : 'volume'
+    return `The Australian pharmacy industry ${dir} ${Math.abs(totalGrowth).toFixed(1)}% by ${metricLabel} to ${fmt(totalMarket)} (${totalGrowth >= 0 ? '+' : '-'}${fmt(totalDelta)} net), with prescription ${metricLabel} ${rxDir} at ${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% (${fmt(ethTY)}) and OTC ${otcDir} at ${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% (${fmt(otcTY)}). This intelligence platform synthesises ${formatCompact(state.ethSkus.length + state.otc.length)} product-level records into commercially actionable insights for pharma executives, suppliers, and pharmacy groups.`
+  }, [totalGrowth, totalMarket, totalMarketLY, ethGrowth, ethTY, otcGrowth, otcTY, isValue, fmt, state.ethSkus.length, state.otc.length])
 
   return (
     <div className="space-y-4 sm:space-y-6 page-enter">
@@ -150,7 +168,10 @@ export function InsightsPage() {
           <span className="text-base font-extrabold tracking-tight"><span className="text-primary">SOTI</span></span>
           <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-widest border border-slate-200 rounded px-1.5 py-0.5">Insights</span>
         </div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">Market Insights</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">Market Insights</h1>
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Strategic themes & industry intelligence</p>
       </div>
 
@@ -188,9 +209,9 @@ export function InsightsPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="Total Market" value={formatCompactDollar(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<BarChart3 className="w-4 h-4" />} />
-        <KPICard title="Dispense (Rx)" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
-        <KPICard title="OTC / FoS" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'Total Market' : 'Total Units'} value={fmt(totalMarket)} delta={totalGrowth} deltaLabel="YoY" icon={<BarChart3 className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'Dispense (Rx)' : 'Rx Units'} value={fmt(ethTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'OTC / FoS' : 'OTC Units'} value={fmt(otcTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Data Points" value={formatCompact(state.ethSkus.length + state.otc.length)} icon={<Sparkles className="w-4 h-4" />} />
       </div>
 
@@ -202,8 +223,8 @@ export function InsightsPage() {
             <BarChart data={marketComparison} barCategoryGap="30%">
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-              <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-              <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+              <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
+              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
               <Bar dataKey="ly" name="Last Year" fill="#94a3b8" radius={[4, 4, 0, 0]} animationDuration={1200} animationEasing="ease-out" />
               <Bar dataKey="ty" name="This Year" fill="#2563EB" radius={[4, 4, 0, 0]} animationDuration={1200} animationEasing="ease-out" animationBegin={300} />
             </BarChart>
@@ -219,7 +240,7 @@ export function InsightsPage() {
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${c.segment === 'Rx' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>{c.segment}</span>
                 <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.category}</span>
-                <span className="text-[10px] font-bold text-emerald-600">+{c.valueGrowth.toFixed(1)}%</span>
+                <span className="text-[10px] font-bold text-emerald-600">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
@@ -291,12 +312,12 @@ export function InsightsPage() {
             <button key={c.category} onClick={() => navigate(c.segment === 'Rx' ? '/dispense' : '/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 py-1.5 border-b border-slate-50 hover:bg-slate-50 rounded transition-colors cursor-pointer">
               <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${c.segment === 'Rx' ? 'bg-blue-50 text-blue-600' : 'bg-teal-50 text-teal-600'}`}>{c.segment}</span>
               <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.category}</span>
-              <span className="text-[10px] font-semibold text-slate-500">{formatCompactDollar(c.tyValue)}</span>
-              <span className="text-[10px] font-bold text-red-500">{c.valueGrowth.toFixed(1)}%</span>
+              <span className="text-[10px] font-semibold text-slate-500">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+              <span className="text-[10px] font-bold text-red-500">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full bg-red-400 transition-all duration-1000"
-                  style={{ width: `${Math.min(Math.abs(c.valueGrowth) * 2, 100)}%` }}
+                  style={{ width: `${Math.min(Math.abs(isValue ? c.valueGrowth : c.unitGrowth) * 2, 100)}%` }}
                 />
               </div>
             </button>
@@ -310,9 +331,9 @@ export function InsightsPage() {
         <p className="text-[10px] text-slate-500 mb-4">Strategic considerations derived from the data</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
-            { q: 'How will 60DD reshape supplier-pharmacy commercial models?', insight: `${formatCompactDollar(ethTotalTY)} Rx market shifting from volume to value — trade terms need renegotiation` },
-            { q: 'Where should suppliers allocate trade spend in OTC?', insight: `${formatCompactDollar(otcTotalTY)} OTC market — condition-specific segments delivering superior ROI vs general wellness` },
-            { q: 'Is specialty pharma the $-growth engine for pharmacy?', insight: `Rx growth at +${ethGrowth.toFixed(1)}% driven by high-cost biologics — disproportionate value per script` },
+            { q: 'How will 60DD reshape supplier-pharmacy commercial models?', insight: `${fmt(ethTY)} Rx ${isValue ? 'market' : 'units'} shifting from volume to value — trade terms need renegotiation` },
+            { q: 'Where should suppliers allocate trade spend in OTC?', insight: `${fmt(otcTY)} OTC ${isValue ? 'market' : 'units'} — condition-specific segments delivering superior ROI vs general wellness` },
+            { q: 'Is specialty pharma the $-growth engine for pharmacy?', insight: `Rx ${isValue ? 'value' : 'unit'} growth at +${ethGrowth.toFixed(1)}% — ${isValue ? 'driven by high-cost biologics' : 'volume dynamics shifting with 60DD'}` },
             { q: 'What is the commercial risk of channel leakage?', insight: `Online and grocery eroding pharmacy share in OTC — pharmacist-advised categories remain defensible moats` },
           ].map((item, i) => (
             <div key={i} className="bg-white/80 rounded-lg p-3 border border-slate-100">

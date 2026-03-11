@@ -1,7 +1,74 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
+import {
+  BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
 import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database, Key, X, Check } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
+
+const CHART_COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+
+interface ChartSpec {
+  type: 'bar' | 'pie'
+  title: string
+  data: { name: string; value: number; value2?: number }[]
+  labels?: [string, string?]
+}
+
+/** Parse ```chart blocks from AI response */
+function parseCharts(content: string): { text: string; charts: ChartSpec[] } {
+  const charts: ChartSpec[] = []
+  const text = content.replace(/```chart\s*\n([\s\S]*?)```/g, (_match, json: string) => {
+    try {
+      const spec = JSON.parse(json) as ChartSpec
+      if (spec.type && spec.data && Array.isArray(spec.data)) {
+        charts.push(spec)
+      }
+    } catch { /* skip invalid */ }
+    return ''
+  })
+  return { text: text.trim(), charts }
+}
+
+/** Render an inline chart from a spec */
+function InlineChart({ spec }: { spec: ChartSpec }) {
+  const label1 = spec.labels?.[0] ?? 'Value'
+  const label2 = spec.labels?.[1]
+
+  if (spec.type === 'pie') {
+    return (
+      <div className="my-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
+        <p className="text-[10px] font-semibold text-slate-600 mb-2">{spec.title}</p>
+        <ResponsiveContainer width="100%" height={180}>
+          <PieChart>
+            <Pie data={spec.data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={35} paddingAngle={2} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
+              {spec.data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+            </Pie>
+            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    )
+  }
+
+  // Default: bar chart
+  return (
+    <div className="my-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
+      <p className="text-[10px] font-semibold text-slate-600 mb-2">{spec.title}</p>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={spec.data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" interval={0} angle={-20} textAnchor="end" height={40} />
+          <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
+          <Tooltip formatter={(v) => formatCompactDollar(Number(v))} />
+          <Bar dataKey="value" name={label1} fill="#2563EB" radius={[3, 3, 0, 0]} />
+          {label2 && <Bar dataKey="value2" name={label2} fill="#94a3b8" radius={[3, 3, 0, 0]} />}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 interface Message {
   role: 'user' | 'assistant' | 'system'
@@ -159,7 +226,20 @@ INSTRUCTIONS:
 - Use competitive intelligence language — market share, portfolio optimisation, channel dynamics
 - If you don't have data for a specific product, say so honestly — never fabricate figures
 - Format with clear structure (bullets, bold for key figures)
-- Position insights as commercially valuable — this is intelligence worth paying for`
+- Position insights as commercially valuable — this is intelligence worth paying for
+
+CHART VISUALISATIONS (IMPORTANT — always include at least one chart):
+- Include 1-2 charts in EVERY response to visualise the data you're discussing
+- Use \`\`\`chart code blocks with JSON inside
+- Supported chart types: "bar" and "pie"
+- Bar chart format: {"type":"bar","title":"Chart Title","data":[{"name":"Label","value":123},...],"labels":["TY Value","LY Value"]}
+- Use "value2" in data items for a second bar series (e.g. LY comparison): {"name":"Cat","value":100,"value2":90}
+- Pie chart format: {"type":"pie","title":"Chart Title","data":[{"name":"Segment","value":123},...]}
+- Use raw numbers (not formatted strings) for values — e.g. 20400000 not "$20.4M"
+- Keep charts to 5-8 data points maximum for readability
+- Choose bar charts for comparisons/rankings, pie charts for market share/composition
+- Place charts AFTER the relevant text paragraph, not at the very end
+- Charts should add visual insight — don't just repeat what the text says`
 }
 
 /** POC demo key — char codes decoded at runtime (bypasses push protection scanners) */
@@ -213,7 +293,15 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
 
   if (q.includes('total') && q.includes('market')) {
     const totalDelta = Math.abs((ethTotalTY + otcTotalTY) - (ethTotalTY / (1 + ethGrowth / 100) + otcTotalTY / (1 + otcGrowth / 100)))
-    return `Total pharmacy market: ${formatCompactDollar(ethTotalTY + otcTotalTY)}\n\n- Rx/Dispense: ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)\n- OTC/FoS: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)\n\nNet value ${ethGrowth + otcGrowth >= 0 ? 'gain' : 'shift'}: ${formatCompactDollar(totalDelta)}. The Rx:OTC split stands at ${((ethTotalTY / (ethTotalTY + otcTotalTY)) * 100).toFixed(0)}:${((otcTotalTY / (ethTotalTY + otcTotalTY)) * 100).toFixed(0)}.`
+    const chart = JSON.stringify({ type: 'bar', title: 'Rx vs OTC — TY vs LY', data: [
+      { name: 'Dispense (Rx)', value: Math.round(ethTotalTY), value2: Math.round(ethTotalLY) },
+      { name: 'OTC / FoS', value: Math.round(otcTotalTY), value2: Math.round(otcTotalLY) },
+    ], labels: ['This Year', 'Last Year'] })
+    const pie = JSON.stringify({ type: 'pie', title: 'Market Split', data: [
+      { name: 'Rx', value: Math.round(ethTotalTY) },
+      { name: 'OTC', value: Math.round(otcTotalTY) },
+    ] })
+    return `Total pharmacy market: ${formatCompactDollar(ethTotalTY + otcTotalTY)}\n\n- Rx/Dispense: ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)\n- OTC/FoS: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)\n\n\`\`\`chart\n${chart}\n\`\`\`\n\n\`\`\`chart\n${pie}\n\`\`\`\n\nNet value ${ethGrowth + otcGrowth >= 0 ? 'gain' : 'shift'}: ${formatCompactDollar(totalDelta)}. The Rx:OTC split stands at ${((ethTotalTY / (ethTotalTY + otcTotalTY)) * 100).toFixed(0)}:${((otcTotalTY / (ethTotalTY + otcTotalTY)) * 100).toFixed(0)}.`
   }
 
   if (q.includes('growing') || q.includes('growth') || q.includes('fastest') || q.includes('opportunity')) {
@@ -222,10 +310,13 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
     const minVal = isOtc ? 50000 : 10000
     const top = [...cats].filter(c => c.lyValue > minVal).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
     const segment = isOtc ? 'OTC' : 'Rx'
+    const chart = JSON.stringify({ type: 'bar', title: `Top ${segment} Growth — TY vs LY`, data: top.map(c => ({
+      name: c.category.split(' ').slice(0, 2).join(' '), value: Math.round(c.tyValue), value2: Math.round(c.lyValue),
+    })), labels: ['This Year', 'Last Year'] })
     return `Top ${segment} growth opportunities:\n${top.map((c, i) => {
       const inc = c.tyValue - c.lyValue
       return `${i + 1}. ${c.category} — +${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)}, +${formatCompactDollar(inc)} incremental)`
-    }).join('\n')}\n\nRecommendation: Suppliers with portfolio exposure to these categories should consider increasing trade investment and sales force allocation.`
+    }).join('\n')}\n\n\`\`\`chart\n${chart}\n\`\`\`\n\nRecommendation: Suppliers with portfolio exposure to these categories should consider increasing trade investment and sales force allocation.`
   }
 
   if (q.includes('declining') || q.includes('decline') || q.includes('worst') || q.includes('risk') || q.includes('under pressure')) {
@@ -234,10 +325,13 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
     const minVal = isOtc ? 50000 : 10000
     const bottom = [...cats].filter(c => c.lyValue > minVal).sort((a, b) => a.valueGrowth - b.valueGrowth).slice(0, 5)
     const segment = isOtc ? 'OTC' : 'Rx'
+    const chart = JSON.stringify({ type: 'bar', title: `${segment} Value at Risk — TY vs LY`, data: bottom.map(c => ({
+      name: c.category.split(' ').slice(0, 2).join(' '), value: Math.round(c.tyValue), value2: Math.round(c.lyValue),
+    })), labels: ['This Year', 'Last Year'] })
     return `${segment} categories with value at risk:\n${bottom.map((c, i) => {
       const eroded = Math.abs(c.tyValue - c.lyValue)
       return `${i + 1}. ${c.category} — ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)}, -${formatCompactDollar(eroded)} erosion)`
-    }).join('\n')}\n\nRecommendation: Assess channel leakage, promotional ROI, and consider portfolio rationalisation in declining segments.`
+    }).join('\n')}\n\n\`\`\`chart\n${chart}\n\`\`\`\n\nRecommendation: Assess channel leakage, promotional ROI, and consider portfolio rationalisation in declining segments.`
   }
 
   if (q.includes('manufacturer') || q.includes('supplier')) {
@@ -263,19 +357,25 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
       const otcItems = [...data.state.otc]
         .map(r => ({ name: r.packName, mfr: r.manufacturer, cat: r.market, tyV: r.tyValue, lyV: r.lyValue, chg: r.tyValue - r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999 }))
         .sort((a, b) => b.tyV - a.tyV).slice(0, 10)
+      const chart = JSON.stringify({ type: 'bar', title: 'Top OTC Items by Value', data: otcItems.slice(0, 6).map(s => ({
+        name: s.name.split(' ').slice(0, 3).join(' '), value: Math.round(s.tyV), value2: Math.round(s.lyV),
+      })), labels: ['This Year', 'Last Year'] })
       return `Top 10 OTC Items (Pack Names) by value:\n${otcItems.map((s, i) => {
         const chgStr = s.chg >= 0 ? `+${formatCompactDollar(s.chg)}` : formatCompactDollar(s.chg)
         return `${i + 1}. ${s.name}\n   Manufacturer: ${s.mfr} | Category: ${s.cat}\n   TY: ${formatCompactDollar(s.tyV)} | Change: ${chgStr} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`
-      }).join('\n\n')}`
+      }).join('\n\n')}\n\n\`\`\`chart\n${chart}\n\`\`\``
     } else {
       const topSkus = data.state.ethSkus.map(r => ({
         sku: r.sku, tyV: r.tyValue, lyV: r.lyValue, cat: r.category, mfr: r.manufacturer, mol: r.molecule,
         chg: r.tyValue - r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
       })).sort((a, b) => b.tyV - a.tyV).slice(0, 10)
+      const chart = JSON.stringify({ type: 'bar', title: 'Top Rx SKUs by Value', data: topSkus.slice(0, 6).map(s => ({
+        name: s.sku.split(' ').slice(0, 3).join(' '), value: Math.round(s.tyV), value2: Math.round(s.lyV),
+      })), labels: ['This Year', 'Last Year'] })
       return `Top 10 Rx SKUs by value:\n${topSkus.map((s, i) => {
         const chgStr = s.chg >= 0 ? `+${formatCompactDollar(s.chg)}` : formatCompactDollar(s.chg)
         return `${i + 1}. ${s.sku}\n   Manufacturer: ${s.mfr} | Molecule: ${s.mol} | Category: ${s.cat}\n   TY: ${formatCompactDollar(s.tyV)} | Change: ${chgStr} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`
-      }).join('\n\n')}`
+      }).join('\n\n')}\n\n\`\`\`chart\n${chart}\n\`\`\``
     }
   }
 
@@ -465,47 +565,56 @@ export function AskPage() {
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            className={`flex gap-3 animate-fade-in ${msg.role === 'user' ? 'justify-end' : ''}`}
-          >
-            {msg.role !== 'user' && (
-              <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${msg.role === 'system' ? 'bg-red-50' : 'bg-gradient-to-br from-primary/15 to-accent/15'}`}>
-                {msg.role === 'system' ? (
-                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                ) : (
-                  <Bot className="w-3.5 h-3.5 text-primary" />
-                )}
-              </div>
-            )}
+        {messages.map((msg, i) => {
+          const parsed = msg.role === 'assistant' ? parseCharts(msg.content) : null
+          const displayText = parsed ? parsed.text : msg.content
+          const charts = parsed?.charts ?? []
 
-            <div className={`max-w-[80%] rounded-xl px-4 py-3 ${
-              msg.role === 'user'
-                ? 'bg-primary text-white'
-                : msg.role === 'system'
-                ? 'bg-red-50 border border-red-200'
-                : 'bg-white border border-slate-200'
-            }`}>
-              <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
-                msg.role === 'user' ? 'text-white' : msg.role === 'system' ? 'text-red-700' : 'text-slate-700'
+          return (
+            <div
+              key={i}
+              className={`flex gap-3 animate-fade-in ${msg.role === 'user' ? 'justify-end' : ''}`}
+            >
+              {msg.role !== 'user' && (
+                <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center ${msg.role === 'system' ? 'bg-red-50' : 'bg-gradient-to-br from-primary/15 to-accent/15'}`}>
+                  {msg.role === 'system' ? (
+                    <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                  ) : (
+                    <Bot className="w-3.5 h-3.5 text-primary" />
+                  )}
+                </div>
+              )}
+
+              <div className={`max-w-[80%] rounded-xl px-4 py-3 ${
+                msg.role === 'user'
+                  ? 'bg-primary text-white'
+                  : msg.role === 'system'
+                  ? 'bg-red-50 border border-red-200'
+                  : 'bg-white border border-slate-200'
               }`}>
-                {msg.content}
-              </p>
-              <p className={`text-[9px] mt-1.5 ${
-                msg.role === 'user' ? 'text-white/50' : 'text-slate-300'
-              }`}>
-                {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
+                <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
+                  msg.role === 'user' ? 'text-white' : msg.role === 'system' ? 'text-red-700' : 'text-slate-700'
+                }`}>
+                  {displayText}
+                </p>
+                {charts.map((spec, ci) => (
+                  <InlineChart key={ci} spec={spec} />
+                ))}
+                <p className={`text-[9px] mt-1.5 ${
+                  msg.role === 'user' ? 'text-white/50' : 'text-slate-300'
+                }`}>
+                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+
+              {msg.role === 'user' && (
+                <div className="w-7 h-7 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center">
+                  <User className="w-3.5 h-3.5 text-slate-500" />
+                </div>
+              )}
             </div>
-
-            {msg.role === 'user' && (
-              <div className="w-7 h-7 rounded-lg bg-slate-100 shrink-0 flex items-center justify-center">
-                <User className="w-3.5 h-3.5 text-slate-500" />
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
 
         {loading && (
           <div className="flex gap-3 animate-fade-in">
