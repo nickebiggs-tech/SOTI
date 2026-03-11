@@ -1,0 +1,28 @@
+{
+  "name": "SOTI — State of the Industry",
+  "short_name": "SOTI",
+  "description": "Australian pharmacy market intelligence powered by NostraData",
+  "start_url": "/SOTI/",
+  "scope": "/SOTI/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/SOTI/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/SOTI/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/SOTI/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
