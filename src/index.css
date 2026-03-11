@@ -685,3 +685,108 @@
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* =============================================
+   ANIMATED PROGRESS BARS
+   ============================================= */
+
+@keyframes bar-fill-right {
+  from { width: 0%; }
+}
+
+.animate-bar-fill {
+  -webkit-animation: bar-fill-right 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: bar-fill-right 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* =============================================
+   METRIC VALUE TRANSITIONS
+   ============================================= */
+
+.metric-value-transition {
+  -webkit-transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* =============================================
+   NARRATIVE BOX ANIMATIONS
+   ============================================= */
+
+@keyframes narrative-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  50% { box-shadow: 0 0 30px -5px rgba(37, 99, 235, 0.08); }
+}
+
+.animate-narrative-glow {
+  -webkit-animation: narrative-glow 4s ease-in-out infinite;
+  animation: narrative-glow 4s ease-in-out infinite;
+}
+
+/* =============================================
+   TABLE ROW STAGGER
+   ============================================= */
+
+.stagger-rows > * {
+  -webkit-animation: fade-in 0.35s ease-out both;
+  animation: fade-in 0.35s ease-out both;
+}
+.stagger-rows > *:nth-child(1) { -webkit-animation-delay: 0ms; animation-delay: 0ms; }
+.stagger-rows > *:nth-child(2) { -webkit-animation-delay: 40ms; animation-delay: 40ms; }
+.stagger-rows > *:nth-child(3) { -webkit-animation-delay: 80ms; animation-delay: 80ms; }
+.stagger-rows > *:nth-child(4) { -webkit-animation-delay: 120ms; animation-delay: 120ms; }
+.stagger-rows > *:nth-child(5) { -webkit-animation-delay: 160ms; animation-delay: 160ms; }
+.stagger-rows > *:nth-child(6) { -webkit-animation-delay: 200ms; animation-delay: 200ms; }
+.stagger-rows > *:nth-child(7) { -webkit-animation-delay: 240ms; animation-delay: 240ms; }
+.stagger-rows > *:nth-child(8) { -webkit-animation-delay: 280ms; animation-delay: 280ms; }
+.stagger-rows > *:nth-child(9) { -webkit-animation-delay: 320ms; animation-delay: 320ms; }
+.stagger-rows > *:nth-child(10) { -webkit-animation-delay: 360ms; animation-delay: 360ms; }
+
+/* =============================================
+   ENHANCED CARD INTERACTIONS
+   ============================================= */
+
+@keyframes card-highlight {
+  0% { border-color: rgba(37, 99, 235, 0); }
+  50% { border-color: rgba(37, 99, 235, 0.2); }
+  100% { border-color: rgba(37, 99, 235, 0); }
+}
+
+.card-interactive {
+  -webkit-transition: box-shadow 0.3s ease, -webkit-transform 0.3s ease, border-color 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+.card-interactive:hover {
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.08);
+  -webkit-transform: translateY(-2px);
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.15);
+}
+
+/* =============================================
+   DELTA BADGE ANIMATION
+   ============================================= */
+
+@keyframes delta-pop {
+  0% { opacity: 0; -webkit-transform: scale(0.6) translateY(4px); transform: scale(0.6) translateY(4px); }
+  70% { -webkit-transform: scale(1.08) translateY(-1px); transform: scale(1.08) translateY(-1px); }
+  100% { opacity: 1; -webkit-transform: scale(1) translateY(0); transform: scale(1) translateY(0); }
+}
+
+.animate-delta-pop {
+  -webkit-animation: delta-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: delta-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* =============================================
+   SECTION HEADER ANIMATION
+   ============================================= */
+
+@keyframes section-slide {
+  from { opacity: 0; -webkit-transform: translateX(-12px); transform: translateX(-12px); }
+  to { opacity: 1; -webkit-transform: translateX(0); transform: translateX(0); }
+}
+
+.animate-section-header {
+  -webkit-animation: section-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: section-slide 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

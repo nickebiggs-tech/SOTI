@@ -276,58 +276,58 @@ export function DashboardPage() {
 
       {/* Opportunity & Risk — with $ value */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-fast">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
-          <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 card-interactive">
+          <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide animate-section-header">
             <Target className="w-3 h-3" /> Rx Opportunity
           </h3>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 stagger-rows">
             {rxGrowers.map((c) => (
               <button key={c.category} onClick={() => navigate('/dispense', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
-                <span className="text-[10px] font-bold text-emerald-600">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
+                <span className="text-[10px] font-bold text-emerald-600 animate-delta-pop">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
-          <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 card-interactive">
+          <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide animate-section-header">
             <AlertTriangle className="w-3 h-3" /> Rx Value at Risk
           </h3>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 stagger-rows">
             {rxDecliners.map((c) => (
               <button key={c.category} onClick={() => navigate('/dispense', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
-                <span className="text-[10px] font-bold text-red-500">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
+                <span className="text-[10px] font-bold text-red-500 animate-delta-pop">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
-          <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 card-interactive">
+          <h3 className="text-[10px] font-semibold text-emerald-700 mb-2 flex items-center gap-1.5 uppercase tracking-wide animate-section-header">
             <Target className="w-3 h-3" /> OTC Opportunity
           </h3>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 stagger-rows">
             {otcGrowers.map((c) => (
               <button key={c.category} onClick={() => navigate('/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
-                <span className="text-[10px] font-bold text-emerald-600">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
+                <span className="text-[10px] font-bold text-emerald-600 animate-delta-pop">+{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
-          <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 card-interactive">
+          <h3 className="text-[10px] font-semibold text-red-600 mb-2 flex items-center gap-1.5 uppercase tracking-wide animate-section-header">
             <AlertTriangle className="w-3 h-3" /> OTC Value at Risk
           </h3>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 stagger-rows">
             {otcDecliners.map((c) => (
               <button key={c.category} onClick={() => navigate('/otc', { state: { selectedCategory: c.category } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <span className="text-[10px] text-slate-700 flex-1 truncate text-left">{c.category}</span>
                 <span className="text-[9px] text-slate-400">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
-                <span className="text-[10px] font-bold text-red-500">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
+                <span className="text-[10px] font-bold text-red-500 animate-delta-pop">{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%</span>
               </button>
             ))}
           </div>
@@ -335,8 +335,8 @@ export function DashboardPage() {
       </div>
 
       {/* Quick nav cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <button onClick={() => navigate('/dispense')} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 text-left hover:shadow-md hover:border-slate-300 transition-all group">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 stagger-fast">
+        <button onClick={() => navigate('/dispense')} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 text-left card-interactive group">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
@@ -357,7 +357,7 @@ export function DashboardPage() {
           </div>
         </button>
 
-        <button onClick={() => navigate('/otc')} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 text-left hover:shadow-md hover:border-slate-300 transition-all group">
+        <button onClick={() => navigate('/otc')} className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 text-left card-interactive group">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
@@ -404,13 +404,13 @@ export function DashboardPage() {
               View all <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-rows">
             {ethTop10.slice(0, 7).map((c, i) => (
               <button key={c.name} onClick={() => navigate('/dispense', { state: { selectedCategory: c.fullName } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.name}</span>
                 <span className="text-[10px] font-semibold text-slate-700">{fmt(c.value)}</span>
-                <span className={`text-[9px] font-bold w-12 text-right ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className={`text-[9px] font-bold w-12 text-right animate-delta-pop ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`} style={{ animationDelay: `${300 + i * 60}ms` }}>
                   {c.growth >= 0 ? '+' : ''}{c.growth}%
                 </span>
               </button>
@@ -426,13 +426,13 @@ export function DashboardPage() {
               View all <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 stagger-rows">
             {otcTop10.slice(0, 7).map((c, i) => (
               <button key={c.name} onClick={() => navigate('/otc', { state: { selectedCategory: c.fullName } })} className="w-full flex items-center gap-2 hover:bg-slate-50 rounded p-1 -m-1 transition-colors cursor-pointer">
                 <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                 <span className="text-[10px] text-slate-600 flex-1 truncate text-left">{c.name}</span>
                 <span className="text-[10px] font-semibold text-slate-700">{fmt(c.value)}</span>
-                <span className={`text-[9px] font-bold w-12 text-right ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className={`text-[9px] font-bold w-12 text-right animate-delta-pop ${c.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`} style={{ animationDelay: `${300 + i * 60}ms` }}>
                   {c.growth >= 0 ? '+' : ''}{c.growth}%
                 </span>
               </button>

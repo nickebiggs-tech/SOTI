@@ -176,7 +176,7 @@ export function InsightsPage() {
       </div>
 
       {/* Hero narrative */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-5 sm:p-8 text-white overflow-hidden animate-fade-in-up">
+      <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl p-5 sm:p-8 text-white overflow-hidden animate-fade-in-up animate-narrative-glow">
         {/* Animated background dots */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           {Array.from({ length: 12 }).map((_, i) => (
