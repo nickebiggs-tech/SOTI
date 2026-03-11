@@ -11,6 +11,7 @@ import {
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar } from '../../lib/formatters'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 
 interface SkuItem {
   sku: string
@@ -19,8 +20,12 @@ interface SkuItem {
   molecule: string
   tyValue: number
   lyValue: number
+  tyUnits: number
+  lyUnits: number
   absChange: number
   growth: number
+  unitAbsChange: number
+  unitGrowth: number
 }
 
 interface WatchCategory {
@@ -77,6 +82,9 @@ export function RxWatchPage() {
   const [narrativeOpen, setNarrativeOpen] = useState(true)
   const [viewMode, setViewMode] = useState<'risers' | 'decliners' | 'all'>('all')
   const [search, setSearch] = useState('')
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
 
@@ -85,8 +93,11 @@ export function RxWatchPage() {
     const allSkus: SkuItem[] = state.ethSkus.map(r => ({
       sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
       tyValue: r.tyValue, lyValue: r.lyValue,
+      tyUnits: r.tyUnits, lyUnits: r.lyUnits,
       absChange: r.tyValue - r.lyValue,
       growth: r.lyValue > 0 ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : (r.tyValue > 0 ? 999 : 0),
+      unitAbsChange: r.tyUnits - r.lyUnits,
+      unitGrowth: r.lyUnits > 0 ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 0,
     }))
 
     // Build category-level with product drill-down
@@ -104,50 +115,52 @@ export function RxWatchPage() {
       return { ...c, absChange: c.tyValue - c.lyValue, rising, declining, newProducts }
     })
 
-    const topRisers = [...allSkus].filter(s => s.absChange > 0 && s.lyValue > 5000).sort((a, b) => b.absChange - a.absChange).slice(0, 15)
-    const topDecliners = [...allSkus].filter(s => s.absChange < 0 && s.lyValue > 5000).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+    const chgKey = isValue ? 'absChange' : 'unitAbsChange' as const
+    const topRisers = [...allSkus].filter(s => s[chgKey] > 0 && s.lyValue > 5000).sort((a, b) => b[chgKey] - a[chgKey]).slice(0, 15)
+    const topDecliners = [...allSkus].filter(s => s[chgKey] < 0 && s.lyValue > 5000).sort((a, b) => a[chgKey] - b[chgKey]).slice(0, 15)
     const newEntrants = [...allSkus].filter(s => s.growth >= 900 && s.tyValue > 10000).sort((a, b) => b.tyValue - a.tyValue).slice(0, 8)
 
     return { categories, topRisers, topDecliners, newEntrants, allSkus }
-  }, [state.ethSkus, ethCategories])
+  }, [state.ethSkus, ethCategories, isValue])
 
   // Derived
   const catGrowers = useMemo(() => watchData.categories.filter(c => c.absChange > 0 && c.lyValue > 10000).sort((a, b) => b.absChange - a.absChange), [watchData])
   const catDecliners = useMemo(() => watchData.categories.filter(c => c.absChange < 0 && c.lyValue > 10000).sort((a, b) => a.absChange - b.absChange), [watchData])
-  const totalGrowing = watchData.topRisers.reduce((s, r) => s + r.absChange, 0)
-  const totalDeclining = watchData.topDecliners.reduce((s, d) => s + Math.abs(d.absChange), 0)
+  const totalGrowing = watchData.topRisers.reduce((s, r) => s + (isValue ? r.absChange : r.unitAbsChange), 0)
+  const totalDeclining = watchData.topDecliners.reduce((s, d) => s + Math.abs(isValue ? d.absChange : d.unitAbsChange), 0)
   const mfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
 
   // Chart data — top category movers
   const catChartData = useMemo(() => {
     return [...watchData.categories]
       .filter(c => c.lyValue > 10000)
-      .sort((a, b) => b.absChange - a.absChange)
+      .sort((a, b) => (isValue ? b.absChange - a.absChange : (b.tyUnits - b.lyUnits) - (a.tyUnits - a.lyUnits)))
       .slice(0, 12)
       .map(c => ({
         name: c.category,
         fullName: c.category,
-        value: c.absChange,
-        growth: c.valueGrowth,
-        tyValue: c.tyValue,
+        value: isValue ? c.absChange : (c.tyUnits - c.lyUnits),
+        growth: isValue ? c.valueGrowth : c.unitGrowth,
+        tyValue: isValue ? c.tyValue : c.tyUnits,
       }))
-  }, [watchData])
+  }, [watchData, isValue])
 
   // Waterfall chart — value migration
   const waterfallData = useMemo(() => {
-    const sorted = [...watchData.categories].filter(c => c.lyValue > 10000).sort((a, b) => b.absChange - a.absChange)
+    const chg = (c: WatchCategory) => isValue ? c.absChange : (c.tyUnits - c.lyUnits)
+    const sorted = [...watchData.categories].filter(c => c.lyValue > 10000).sort((a, b) => chg(b) - chg(a))
     const topGainers = sorted.slice(0, 5).map(c => ({
       name: c.category,
-      gain: c.absChange,
+      gain: chg(c),
       loss: 0,
     }))
     const topLosers = sorted.slice(-5).reverse().map(c => ({
       name: c.category,
       gain: 0,
-      loss: c.absChange,
+      loss: chg(c),
     }))
     return [...topGainers, ...topLosers]
-  }, [watchData])
+  }, [watchData, isValue])
 
   // Narrative
   const narrative = useMemo(() => generateRxWatchNarrative(
@@ -185,16 +198,19 @@ export function RxWatchPage() {
           <span className="text-blue-600">Rx Watch</span>
           <span className="text-sm font-medium text-slate-400 ml-2">Prescription Product Monitor</span>
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
-          Products driving significant growth and those under pressure — category-level analysis with product drill-down
-        </p>
+        <div className="flex items-center justify-between mt-0.5 sm:mt-1">
+          <p className="text-xs sm:text-sm text-slate-500">
+            Products driving significant growth and those under pressure — category-level analysis with product drill-down
+          </p>
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="Rx Market" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
-        <KPICard title="Value Growth" value={formatCompactDollar(totalGrowing)} icon={<TrendingUp className="w-4 h-4 text-emerald-500" />} />
-        <KPICard title="Value at Risk" value={formatCompactDollar(totalDeclining)} icon={<TrendingDown className="w-4 h-4 text-red-500" />} />
+        <KPICard title="Rx Market" value={isValue ? formatCompactDollar(ethTotalTY) : formatCompact(state.ethSkus.reduce((s, r) => s + r.tyUnits, 0))} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'Value Growth' : 'Volume Growth'} value={fmt(totalGrowing)} icon={<TrendingUp className="w-4 h-4 text-emerald-500" />} />
+        <KPICard title={isValue ? 'Value at Risk' : 'Volume at Risk'} value={fmt(totalDeclining)} icon={<TrendingDown className="w-4 h-4 text-red-500" />} />
         <KPICard title="Suppliers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
       </div>
 
@@ -226,17 +242,17 @@ export function RxWatchPage() {
             <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Value Migration</h3>
             <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Top Gainers vs Losers</span>
           </div>
-          <p className="text-[9px] text-slate-500 mt-1">Absolute $ value change by category — green = growth, red = decline</p>
+          <p className="text-[9px] text-slate-500 mt-1">Absolute {isValue ? '$ value' : 'unit'} change by category — green = growth, red = decline</p>
         </div>
         <div className="p-3 sm:p-5">
           <ResponsiveContainer width="100%" height={380}>
             <BarChart data={waterfallData} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={160} />
-              <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
-              <Bar dataKey="gain" name="Value Gained" fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
-              <Bar dataKey="loss" name="Value Lost" fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
+              <Tooltip formatter={(v) => fmt(v as number)} />
+              <Bar dataKey="gain" name={isValue ? 'Value Gained' : 'Units Gained'} fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
+              <Bar dataKey="loss" name={isValue ? 'Value Lost' : 'Units Lost'} fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -247,24 +263,24 @@ export function RxWatchPage() {
         <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Target className="w-4 h-4 text-blue-600 shrink-0" />
-            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Category Value Change ($)</h3>
-            <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">YoY $ Change</span>
+            <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Category {isValue ? 'Value' : 'Volume'} Change {isValue ? '($)' : '(Units)'}</h3>
+            <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">YoY {isValue ? '$' : 'Unit'} Change</span>
           </div>
         </div>
         <div className="p-3 sm:p-5">
           <ResponsiveContainer width="100%" height={420}>
             <BarChart data={catChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={170} />
               <Tooltip
-                formatter={(v) => formatCompactDollar(v as number)}
+                formatter={(v) => fmt(v as number)}
                 labelFormatter={(label) => {
                   const item = catChartData.find(c => c.name === label)
-                  return item ? `${item.fullName} (TY: ${formatCompactDollar(item.tyValue)})` : String(label)
+                  return item ? `${item.fullName} (TY: ${fmt(item.tyValue)})` : String(label)
                 }}
               />
-              <Bar dataKey="value" name="$ Change" radius={[0, 4, 4, 0]} animationDuration={800}>
+              <Bar dataKey="value" name={isValue ? '$ Change' : 'Unit Change'} radius={[0, 4, 4, 0]} animationDuration={800}>
                 {catChartData.map((c, i) => <Cell key={i} fill={c.value >= 0 ? '#059669' : '#DC2626'} />)}
               </Bar>
             </BarChart>
@@ -280,7 +296,7 @@ export function RxWatchPage() {
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Flame className="w-4 h-4 text-emerald-500 shrink-0" />
               <h3 className="text-[11px] sm:text-xs font-bold text-emerald-800">Rising Stars</h3>
-              <span className="text-[7px] sm:text-[8px] bg-emerald-100 text-emerald-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Top {watchData.topRisers.length} by $ Gain</span>
+              <span className="text-[7px] sm:text-[8px] bg-emerald-100 text-emerald-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Top {watchData.topRisers.length} by {isValue ? '$ Gain' : 'Unit Gain'}</span>
             </div>
           </div>
           <div className="p-3 sm:p-5">
@@ -293,8 +309,8 @@ export function RxWatchPage() {
                     <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</p>
-                    <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)} TY</p>
+                    <p className="text-[10px] font-bold text-emerald-600">+{fmt(isValue ? s.absChange : s.unitAbsChange)}</p>
+                    <p className="text-[8px] text-slate-400">{fmt(isValue ? s.tyValue : s.tyUnits)} TY</p>
                   </div>
                   <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 group-hover:text-emerald-500" />
                 </button>
@@ -302,7 +318,7 @@ export function RxWatchPage() {
             </div>
             <div className="mt-3 p-2.5 bg-emerald-50/60 rounded-lg">
               <p className="text-[9px] text-emerald-700/80 leading-relaxed">
-                Combined value addition: <span className="font-bold">{formatCompactDollar(totalGrowing)}</span>. These products represent growth engines — prioritise distribution, promotional support, and pharmacist education programs.
+                Combined {isValue ? 'value' : 'volume'} addition: <span className="font-bold">{fmt(totalGrowing)}</span>. These products represent growth engines — prioritise distribution, promotional support, and pharmacist education programs.
               </p>
             </div>
           </div>
@@ -314,7 +330,7 @@ export function RxWatchPage() {
             <div className="flex items-center gap-1.5 sm:gap-2">
               <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />
               <h3 className="text-[11px] sm:text-xs font-bold text-red-800">Value at Risk</h3>
-              <span className="text-[7px] sm:text-[8px] bg-red-100 text-red-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Top {watchData.topDecliners.length} by $ Loss</span>
+              <span className="text-[7px] sm:text-[8px] bg-red-100 text-red-700 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Top {watchData.topDecliners.length} by {isValue ? '$ Loss' : 'Unit Loss'}</span>
             </div>
           </div>
           <div className="p-3 sm:p-5">
@@ -327,8 +343,8 @@ export function RxWatchPage() {
                     <p className="text-[8px] text-slate-400 truncate">{s.manufacturer} · {s.category}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</p>
-                    <p className="text-[8px] text-slate-400">{formatCompactDollar(s.tyValue)} TY</p>
+                    <p className="text-[10px] font-bold text-red-500">{fmt(isValue ? s.absChange : s.unitAbsChange)}</p>
+                    <p className="text-[8px] text-slate-400">{fmt(isValue ? s.tyValue : s.tyUnits)} TY</p>
                   </div>
                   <ChevronRight className="w-3 h-3 text-slate-300 shrink-0 group-hover:text-red-500" />
                 </button>
@@ -336,7 +352,7 @@ export function RxWatchPage() {
             </div>
             <div className="mt-3 p-2.5 bg-red-50/60 rounded-lg">
               <p className="text-[9px] text-red-600/80 leading-relaxed">
-                Combined value erosion: <span className="font-bold">{formatCompactDollar(totalDeclining)}</span>. Investigate generic entry, 60-day dispensing impact, and competitive displacement. Defensive strategies recommended.
+                Combined {isValue ? 'value' : 'volume'} erosion: <span className="font-bold">{fmt(totalDeclining)}</span>. Investigate generic entry, 60-day dispensing impact, and competitive displacement. Defensive strategies recommended.
               </p>
             </div>
           </div>
@@ -361,7 +377,7 @@ export function RxWatchPage() {
                   <p className="text-[10px] font-semibold text-slate-700 truncate group-hover:text-blue-700">{n.sku}</p>
                   <p className="text-[8px] text-slate-400 truncate mt-0.5">{n.manufacturer}</p>
                   <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-blue-100">
-                    <span className="text-[10px] font-bold text-blue-600">{formatCompactDollar(n.tyValue)}</span>
+                    <span className="text-[10px] font-bold text-blue-600">{fmt(isValue ? n.tyValue : n.tyUnits)}</span>
                     <span className="text-[8px] text-slate-400">{n.category.length > 15 ? n.category.slice(0, 13) + '...' : n.category}</span>
                   </div>
                 </button>
@@ -433,12 +449,12 @@ export function RxWatchPage() {
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-[10px] sm:text-[11px] font-semibold text-slate-800 truncate group-hover:text-blue-700">{c.category}</span>
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                          <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.absChange >= 0 ? '+' : ''}{formatCompactDollar(c.absChange)}
+                          <span className={`text-[10px] sm:text-[11px] font-bold ${(isValue ? c.absChange : (c.tyUnits - c.lyUnits)) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(isValue ? c.absChange : (c.tyUnits - c.lyUnits)) >= 0 ? '+' : ''}{fmt(isValue ? c.absChange : (c.tyUnits - c.lyUnits))}
                           </span>
-                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{formatCompactDollar(c.tyValue)}</span>
-                          <span className={`text-[9px] font-bold w-12 text-right ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(1)}%
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                          <span className={`text-[9px] font-bold w-12 text-right ${(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? '+' : ''}{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -470,7 +486,7 @@ export function RxWatchPage() {
                   <div>
                     <h4 className="text-sm font-bold text-slate-800">{catDetail.category}</h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {formatCompactDollar(catDetail.tyValue)} TY · <span className={catDetail.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}>{catDetail.valueGrowth >= 0 ? '+' : ''}{catDetail.valueGrowth.toFixed(1)}%</span> · {formatCompactDollar(Math.abs(catDetail.absChange))} {catDetail.absChange >= 0 ? 'gained' : 'lost'} · {catDetail.manufacturerCount} suppliers · {formatCompact(catDetail.skuCount)} SKUs
+                      {fmt(isValue ? catDetail.tyValue : catDetail.tyUnits)} TY · <span className={(isValue ? catDetail.valueGrowth : catDetail.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}>{(isValue ? catDetail.valueGrowth : catDetail.unitGrowth) >= 0 ? '+' : ''}{(isValue ? catDetail.valueGrowth : catDetail.unitGrowth).toFixed(1)}%</span> · {fmt(Math.abs(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)))} {(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)) >= 0 ? 'gained' : 'lost'} · {catDetail.manufacturerCount} suppliers · {formatCompact(catDetail.skuCount)} SKUs
                     </p>
                   </div>
                   <button onClick={() => navigate('/dispense', { state: { selectedCategory: catDetail.category } })} className="text-[9px] text-blue-600 font-semibold flex items-center gap-0.5 hover:underline shrink-0">
@@ -484,9 +500,9 @@ export function RxWatchPage() {
                 <div className="flex items-start gap-2">
                   <Sparkles className="w-3 h-3 text-blue-500 shrink-0 mt-0.5" />
                   <p className="text-[10px] text-slate-600 leading-relaxed">
-                    {catDetail.category} {catDetail.valueGrowth >= 0 ? 'grew' : 'declined'} {Math.abs(catDetail.valueGrowth).toFixed(1)}% to {formatCompactDollar(catDetail.tyValue)}, {catDetail.absChange >= 0 ? 'adding' : 'losing'} {formatCompactDollar(Math.abs(catDetail.absChange))} in absolute value across {catDetail.manufacturerCount} suppliers and {formatCompact(catDetail.skuCount)} SKUs.
-                    {catDetail.rising.length > 0 && catDetail.rising[0] ? ` Growth is led by ${catDetail.rising[0].sku} (+${formatCompactDollar(catDetail.rising[0].absChange)}).` : ''}
-                    {catDetail.declining.length > 0 && catDetail.declining[0] ? ` Biggest decliner: ${catDetail.declining[0].sku} (${formatCompactDollar(catDetail.declining[0].absChange)}).` : ''}
+                    {catDetail.category} {(isValue ? catDetail.valueGrowth : catDetail.unitGrowth) >= 0 ? 'grew' : 'declined'} {Math.abs(isValue ? catDetail.valueGrowth : catDetail.unitGrowth).toFixed(1)}% to {fmt(isValue ? catDetail.tyValue : catDetail.tyUnits)}, {(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)) >= 0 ? 'adding' : 'losing'} {fmt(Math.abs(isValue ? catDetail.absChange : (catDetail.tyUnits - catDetail.lyUnits)))} in absolute {isValue ? 'value' : 'volume'} across {catDetail.manufacturerCount} suppliers and {formatCompact(catDetail.skuCount)} SKUs.
+                    {catDetail.rising.length > 0 && catDetail.rising[0] ? ` Growth is led by ${catDetail.rising[0].sku} (+${fmt(isValue ? catDetail.rising[0].absChange : catDetail.rising[0].unitAbsChange)}).` : ''}
+                    {catDetail.declining.length > 0 && catDetail.declining[0] ? ` Biggest decliner: ${catDetail.declining[0].sku} (${fmt(isValue ? catDetail.declining[0].absChange : catDetail.declining[0].unitAbsChange)}).` : ''}
                     {catDetail.absChange >= 0
                       ? ' Suppliers should increase investment in this category to capture growth momentum.'
                       : ' Defensive strategies recommended — assess generic entry, channel dynamics, and promotional ROI.'}
@@ -508,7 +524,7 @@ export function RxWatchPage() {
                           <span className="text-[8px] font-bold text-emerald-400 w-3">{i + 1}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
-                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(s.absChange)}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{fmt(isValue ? s.absChange : s.unitAbsChange)}</span>
                         </div>
                       ))}
                     </div>
@@ -527,7 +543,7 @@ export function RxWatchPage() {
                           <span className="text-[8px] font-bold text-red-400 w-3">{i + 1}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{s.sku}</span>
-                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(s.absChange)}</span>
+                          <span className="text-[9px] font-bold text-red-500">{fmt(isValue ? s.absChange : s.unitAbsChange)}</span>
                         </div>
                       ))}
                     </div>
@@ -547,7 +563,7 @@ export function RxWatchPage() {
                       {catDetail.newProducts.map(n => (
                         <div key={n.sku} className="bg-white rounded-lg border border-blue-100 px-2.5 py-1.5 text-left">
                           <p className="text-[9px] font-medium text-slate-700 truncate max-w-[180px]">{n.sku}</p>
-                          <p className="text-[8px] text-blue-600 font-bold">{formatCompactDollar(n.tyValue)} <span className="text-slate-400 font-normal">· {n.manufacturer}</span></p>
+                          <p className="text-[8px] text-blue-600 font-bold">{fmt(isValue ? n.tyValue : n.tyUnits)} <span className="text-slate-400 font-normal">· {n.manufacturer}</span></p>
                         </div>
                       ))}
                     </div>

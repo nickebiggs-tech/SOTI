@@ -9,6 +9,7 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 import type { ManufacturerSummary } from '../../data/types'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 
 const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
 
@@ -53,6 +54,7 @@ export function DispensePage() {
   const [skuTab, setSkuTab] = useState<'value' | 'growing' | 'declining'>('value')
   const [selectedSku, setSelectedSku] = useState<string | null>(null)
   const [catTab, setCatTab] = useState<'leaders' | 'gainers' | 'decliners'>('leaders')
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
   const skipMfrReset = useRef(false)
@@ -80,6 +82,10 @@ export function DispensePage() {
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const totalUnits = useMemo(() => ethCategories.reduce((s, c) => s + c.tyUnits, 0), [ethCategories])
+  const totalUnitsLY = useMemo(() => ethCategories.reduce((s, c) => s + c.lyUnits, 0), [ethCategories])
+  const unitGrowth = totalUnitsLY ? ((totalUnits - totalUnitsLY) / totalUnitsLY) * 100 : 0
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
   const skuCount = state.ethSkus.length
   const mfrCount = useMemo(() => new Set(state.ethSkus.map(r => r.manufacturer)).size, [state.ethSkus])
 
@@ -91,18 +97,27 @@ export function DispensePage() {
   // Growth leaders & decliners
   // Category landscape — absolute $ movers & market share
   const categoryMovers = useMemo(() => {
+    const totalMetric = isValue ? ethTotalTY : totalUnits
     const withMeta = ethCategories
-      .filter(c => c.lyValue > 5000)
-      .map(c => ({
-        ...c,
-        absChange: c.tyValue - c.lyValue,
-        shareOfMarket: ethTotalTY ? (c.tyValue / ethTotalTY) * 100 : 0,
-      }))
-    const topByValue = [...withMeta].sort((a, b) => b.tyValue - a.tyValue).slice(0, 10)
+      .filter(c => isValue ? c.lyValue > 5000 : c.lyUnits > 500)
+      .map(c => {
+        const ty = isValue ? c.tyValue : c.tyUnits
+        const ly = isValue ? c.lyValue : c.lyUnits
+        const growth = ly ? ((ty - ly) / ly) * 100 : 0
+        return {
+          ...c,
+          metricTY: ty,
+          metricLY: ly,
+          metricGrowth: growth,
+          absChange: ty - ly,
+          shareOfMarket: totalMetric ? (ty / totalMetric) * 100 : 0,
+        }
+      })
+    const topByValue = [...withMeta].sort((a, b) => b.metricTY - a.metricTY).slice(0, 10)
     const biggestGainers = [...withMeta].filter(c => c.absChange > 0).sort((a, b) => b.absChange - a.absChange).slice(0, 8)
     const biggestDecliners = [...withMeta].filter(c => c.absChange < 0).sort((a, b) => a.absChange - b.absChange).slice(0, 8)
     return { topByValue, biggestGainers, biggestDecliners }
-  }, [ethCategories, ethTotalTY])
+  }, [ethCategories, ethTotalTY, isValue, totalUnits])
 
   const activeCatList = catTab === 'leaders' ? categoryMovers.topByValue : catTab === 'gainers' ? categoryMovers.biggestGainers : categoryMovers.biggestDecliners
 
@@ -179,37 +194,56 @@ export function DispensePage() {
   // Growth drivers — which manufacturers are driving category movement
   const growthDrivers = useMemo(() => {
     if (!selectedCat || mfrBreakdown.length === 0) return { gainers: [], decliners: [] }
-    const withChange = mfrBreakdown.map(m => ({ ...m, absChange: m.tyValue - m.lyValue }))
+    const withChange = mfrBreakdown.map(m => {
+      const change = isValue ? (m.tyValue - m.lyValue) : (m.tyUnits - m.lyUnits)
+      return { ...m, absChange: change }
+    })
     return {
       gainers: withChange.filter(m => m.absChange > 0).sort((a, b) => b.absChange - a.absChange).slice(0, 5),
       decliners: withChange.filter(m => m.absChange < 0).sort((a, b) => a.absChange - b.absChange).slice(0, 5),
     }
-  }, [selectedCat, mfrBreakdown])
+  }, [selectedCat, mfrBreakdown, isValue])
 
   // SKU breakdown for selected manufacturer within selected category (from SKU data)
   const skuBreakdown = useMemo(() => {
     if (!selectedCat || !selectedMfr) return []
     return state.ethSkus
       .filter(r => r.category === selectedCat && r.manufacturer === selectedMfr)
-      .map(r => ({ sku: r.sku, molecule: r.molecule, tyValue: r.tyValue, lyValue: r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 0 }))
-      .sort((a, b) => b.tyValue - a.tyValue)
-  }, [selectedCat, selectedMfr, state.ethSkus])
+      .map(r => {
+        const ty = isValue ? r.tyValue : r.tyUnits
+        const ly = isValue ? r.lyValue : r.lyUnits
+        return {
+          sku: r.sku, molecule: r.molecule,
+          tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
+          metricTY: ty, metricLY: ly,
+          growth: ly ? ((ty - ly) / ly) * 100 : 0,
+          absChange: ty - ly,
+        }
+      })
+      .sort((a, b) => b.metricTY - a.metricTY)
+  }, [selectedCat, selectedMfr, state.ethSkus, isValue])
 
   // ── Market-wide SKU Intelligence (from pre-aggregated SKU data) ──
   const skuInsights = useMemo(() => {
-    const all = state.ethSkus.map(r => ({
-      sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
-      tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
-      growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
-      absChange: r.tyValue - r.lyValue,
-    }))
-    const byValue = [...all].sort((a, b) => b.tyValue - a.tyValue)
-    const growing = [...all].filter(s => s.lyValue > 5000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
-    const declining = [...all].filter(s => s.lyValue > 5000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
-    // Pareto: how many SKUs account for 80% of market value
-    const totalTY = byValue.reduce((s, r) => s + r.tyValue, 0)
+    const all = state.ethSkus.map(r => {
+      const ty = isValue ? r.tyValue : r.tyUnits
+      const ly = isValue ? r.lyValue : r.lyUnits
+      return {
+        sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
+        tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
+        metricTY: ty, metricLY: ly,
+        growth: ly ? ((ty - ly) / ly) * 100 : 999,
+        absChange: ty - ly,
+      }
+    })
+    const byValue = [...all].sort((a, b) => b.metricTY - a.metricTY)
+    const minLY = isValue ? 5000 : 500
+    const growing = [...all].filter(s => s.metricLY > minLY && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
+    const declining = [...all].filter(s => s.metricLY > minLY && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+    // Pareto: how many SKUs account for 80% of market
+    const totalTY = byValue.reduce((s, r) => s + r.metricTY, 0)
     let cum = 0, p80 = 0
-    for (const s of byValue) { cum += s.tyValue; p80++; if (cum >= totalTY * 0.8) break }
+    for (const s of byValue) { cum += s.metricTY; p80++; if (cum >= totalTY * 0.8) break }
     return {
       total: all.length,
       byValue: byValue.slice(0, 15),
@@ -217,7 +251,7 @@ export function DispensePage() {
       declining,
       pareto80: { count: p80, pct: all.length ? (p80 / all.length) * 100 : 0 },
     }
-  }, [state.ethSkus])
+  }, [state.ethSkus, isValue])
 
   const activeSkuList = skuTab === 'value' ? skuInsights.byValue : skuTab === 'growing' ? skuInsights.growing : skuInsights.declining
 
@@ -253,12 +287,15 @@ export function DispensePage() {
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">Dispense Analytics</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Prescription market — category, manufacturer & molecule drill-in</p>
+        <div className="flex items-center gap-3 mt-2">
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="Rx Market Value" value={formatCompactDollar(ethTotalTY)} delta={ethGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
-        <KPICard title="Total Units" value={formatCompact(totalUnits)} icon={<Package className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'Rx Market Value' : 'Rx Market Units'} value={isValue ? formatCompactDollar(ethTotalTY) : formatCompact(totalUnits)} delta={isValue ? ethGrowth : unitGrowth} deltaLabel="YoY" icon={<Pill className="w-4 h-4" />} />
+        <KPICard title={isValue ? 'Total Units' : 'Market Value'} value={isValue ? formatCompact(totalUnits) : formatCompactDollar(ethTotalTY)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="SKUs" value={formatCompact(skuCount)} icon={<FlaskConical className="w-4 h-4" />} />
       </div>
@@ -316,8 +353,8 @@ export function DispensePage() {
             {activeCatList.map((c, i) => {
               const isGainerTab = catTab === 'gainers'
               const isDeclinerTab = catTab === 'decliners'
-              const maxVal = activeCatList[0]?.tyValue || 1
-              const barWidth = (c.tyValue / maxVal) * 100
+              const maxVal = activeCatList[0]?.metricTY || 1
+              const barWidth = (c.metricTY / maxVal) * 100
               return (
                 <button
                   key={c.category}
@@ -334,13 +371,13 @@ export function DispensePage() {
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           {(isGainerTab || isDeclinerTab) && (
                             <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {c.absChange >= 0 ? '+' : ''}{formatCompactDollar(c.absChange)}
+                              {c.absChange >= 0 ? '+' : ''}{fmt(c.absChange)}
                             </span>
                           )}
-                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 hidden sm:inline">{formatCompactDollar(c.tyValue)}</span>
-                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 sm:hidden">{formatCompactDollar(c.tyValue)}</span>
-                          <span className={`text-[9px] font-bold w-12 text-right ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(1)}%
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 hidden sm:inline">{fmt(c.metricTY)}</span>
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 sm:hidden">{fmt(c.metricTY)}</span>
+                          <span className={`text-[9px] font-bold w-12 text-right ${c.metricGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {c.metricGrowth >= 0 ? '+' : ''}{c.metricGrowth.toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -413,8 +450,8 @@ export function DispensePage() {
                 <th className="text-left py-2 text-slate-500 font-medium w-20 hidden sm:table-cell">Molecule</th>
                 <th className="text-left py-2 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
                 <th className="text-left py-2 text-slate-500 font-medium w-20 hidden lg:table-cell">Category</th>
-                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">Value</th>
-                <th className="text-right py-2 text-slate-500 font-medium w-18 hidden sm:table-cell">LY Value</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">{isValue ? 'TY Value' : 'TY Units'}</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-18 hidden sm:table-cell">{isValue ? 'LY Value' : 'LY Units'}</th>
                 <th className="text-right py-2 text-slate-500 font-medium w-14 sm:w-16">Chg</th>
               </tr>
             </thead>
@@ -426,8 +463,8 @@ export function DispensePage() {
                   <td className="py-2.5 sm:py-2 text-slate-500 truncate hidden sm:table-cell text-[9px]">{s.molecule}</td>
                   <td className="py-2.5 sm:py-2 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
                   <td className="py-2.5 sm:py-2 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
-                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                  <td className="text-right py-2.5 sm:py-2 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
+                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{fmt(s.metricTY)}</td>
+                  <td className="text-right py-2.5 sm:py-2 text-slate-500 hidden sm:table-cell">{fmt(s.metricLY)}</td>
                   <td className={`text-right py-2.5 sm:py-2 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
                     {s.growth >= 900 ? 'New' : `${s.growth >= 0 ? '+' : ''}${s.growth.toFixed(0)}%`}
                   </td>
@@ -484,13 +521,13 @@ export function DispensePage() {
                 <h3 className="text-xs font-bold text-slate-800 mb-2 leading-tight">{cat.category}</h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
                   <div>
-                    <span className="text-slate-400">TY Value</span>
-                    <p className="font-semibold text-slate-700">{formatCompactDollar(cat.tyValue)}</p>
+                    <span className="text-slate-400">{isValue ? 'TY Value' : 'TY Units'}</span>
+                    <p className="font-semibold text-slate-700">{fmt(isValue ? cat.tyValue : cat.tyUnits)}</p>
                   </div>
                   <div>
                     <span className="text-slate-400">Growth</span>
-                    <p className={`font-bold ${cat.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {cat.valueGrowth >= 0 ? '+' : ''}{cat.valueGrowth.toFixed(1)}%
+                    <p className={`font-bold ${(isValue ? cat.valueGrowth : (cat.lyUnits ? ((cat.tyUnits - cat.lyUnits) / cat.lyUnits) * 100 : 0)) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {(isValue ? cat.valueGrowth : (cat.lyUnits ? ((cat.tyUnits - cat.lyUnits) / cat.lyUnits) * 100 : 0)) >= 0 ? '+' : ''}{(isValue ? cat.valueGrowth : (cat.lyUnits ? ((cat.tyUnits - cat.lyUnits) / cat.lyUnits) * 100 : 0)).toFixed(1)}%
                     </p>
                   </div>
                   <div>
@@ -547,7 +584,7 @@ export function DispensePage() {
                         <button key={m.manufacturer} onClick={() => setSelectedMfr(m.manufacturer)} className="w-full flex items-center gap-1.5 text-left hover:bg-emerald-50 active:bg-emerald-100/50 rounded p-1 -mx-1 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
-                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(m.absChange)}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{fmt(m.absChange)}</span>
                         </button>
                       ))}
                     </div>
@@ -561,7 +598,7 @@ export function DispensePage() {
                         <button key={m.manufacturer} onClick={() => setSelectedMfr(m.manufacturer)} className="w-full flex items-center gap-1.5 text-left hover:bg-red-50 active:bg-red-100/50 rounded p-1 -mx-1 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
-                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(m.absChange)}</span>
+                          <span className="text-[9px] font-bold text-red-500">{fmt(m.absChange)}</span>
                         </button>
                       ))}
                     </div>
@@ -574,14 +611,14 @@ export function DispensePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-5">
             {/* Monthly trend */}
             <div>
-              <h4 className="text-xs font-semibold text-slate-600 mb-3">Monthly Sales Trend</h4>
+              <h4 className="text-xs font-semibold text-slate-600 mb-3">{isValue ? 'Monthly Sales Trend' : 'Monthly Units Trend'}</h4>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={monthlyTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="#94a3b8" />
                   <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                  <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                  <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={1200} animationEasing="ease-out" />
+                  <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                  <Line type="monotone" dataKey={isValue ? 'sales' : 'units'} stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={1200} animationEasing="ease-out" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -590,16 +627,17 @@ export function DispensePage() {
             <div>
               <h4 className="text-xs font-semibold text-slate-600 mb-3">Top Manufacturers</h4>
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={mfrBreakdown.slice(0, 8)} layout="vertical" margin={{ left: 10 }}>
+                <BarChart data={mfrBreakdown.slice(0, 8)} layout="vertical" margin={{ left: 10 }} onClick={(e) => { if (e?.activeLabel) { const label = String(e.activeLabel); setSelectedMfr(selectedMfr === label ? null : label) } }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
                   <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={130} />
-                  <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                  <Bar dataKey="tyValue" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out">
-                    {mfrBreakdown.slice(0, 8).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                  <Bar dataKey={isValue ? 'tyValue' : 'tyUnits'} name={isValue ? 'TY Value' : 'TY Units'} radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out" className="cursor-pointer">
+                    {mfrBreakdown.slice(0, 8).map((m, i) => <Cell key={i} fill={selectedMfr === m.manufacturer ? COLORS[i % COLORS.length] : selectedMfr ? `${COLORS[i % COLORS.length]}44` : COLORS[i % COLORS.length]} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <p className="mt-1 text-[8px] text-blue-400 italic">Click a bar to drill into that manufacturer&apos;s SKUs</p>
             </div>
 
             {/* Top molecules */}
@@ -622,7 +660,7 @@ export function DispensePage() {
               <div className="space-y-0.5 max-h-[280px] overflow-y-auto scrollbar-thin">
                 {mfrBreakdown.slice(0, 12).map((m, i) => {
                   const isSel = selectedMfr === m.manufacturer
-                  const absChange = m.tyValue - m.lyValue
+                  const absChange = isValue ? (m.tyValue - m.lyValue) : (m.tyUnits - m.lyUnits)
                   return (
                     <button
                       key={m.manufacturer}
@@ -631,16 +669,16 @@ export function DispensePage() {
                     >
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                       <span className="text-[9px] sm:text-[10px] text-slate-600 flex-1 truncate text-left">{m.manufacturer}</span>
-                      <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 w-12 text-right hidden sm:block">{formatCompactDollar(m.tyValue)}</span>
+                      <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 w-12 text-right hidden sm:block">{fmt(isValue ? m.tyValue : m.tyUnits)}</span>
                       <span className={`text-[8px] sm:text-[9px] font-bold w-14 text-right hidden sm:block ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                        {absChange >= 0 ? '+' : ''}{fmt(absChange)}
                       </span>
                       <div className="w-10 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
                       </div>
                       <span className="text-[9px] sm:text-[10px] font-bold text-slate-700 w-10 text-right">{m.share.toFixed(1)}%</span>
-                      <span className={`text-[8px] sm:text-[9px] font-bold w-10 sm:w-11 text-right ${m.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {m.valueGrowth >= 0 ? '+' : ''}{m.valueGrowth.toFixed(0)}%
+                      <span className={`text-[8px] sm:text-[9px] font-bold w-10 sm:w-11 text-right ${(isValue ? m.valueGrowth : (m.lyUnits ? ((m.tyUnits - m.lyUnits) / m.lyUnits) * 100 : 0)) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {(() => { const g = isValue ? m.valueGrowth : (m.lyUnits ? ((m.tyUnits - m.lyUnits) / m.lyUnits) * 100 : 0); return `${g >= 0 ? '+' : ''}${g.toFixed(0)}%` })()}
                       </span>
                       <ChevronDown className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${isSel ? 'rotate-180' : ''}`} />
                     </button>
@@ -668,15 +706,14 @@ export function DispensePage() {
                     <tr className="border-b border-slate-100">
                       <th className="text-left py-1.5 text-slate-500 font-medium">SKU</th>
                       <th className="text-left py-1.5 text-slate-500 font-medium w-24 hidden sm:table-cell">Molecule</th>
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-16 sm:w-20">Value</th>
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-20 hidden sm:table-cell">LY Value</th>
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-18 hidden sm:table-cell">$ Change</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-16 sm:w-20">{isValue ? 'Value' : 'Units'}</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-20 hidden sm:table-cell">{isValue ? 'LY Value' : 'LY Units'}</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-18 hidden sm:table-cell">{isValue ? '$ Change' : 'Unit Chg'}</th>
                       <th className="text-right py-1.5 text-slate-500 font-medium w-14 sm:w-16">Chg</th>
                     </tr>
                   </thead>
                   <tbody>
                     {skuBreakdown.slice(0, 20).map((s) => {
-                      const absChange = s.tyValue - s.lyValue
                       return (
                       <tr
                         key={s.sku}
@@ -686,10 +723,10 @@ export function DispensePage() {
                       >
                         <td className="py-2.5 sm:py-1.5 text-slate-700 truncate max-w-[140px] sm:max-w-[220px] text-[9px] sm:text-[10px]">{s.sku}</td>
                         <td className="py-2.5 sm:py-1.5 text-slate-500 truncate hidden sm:table-cell">{s.molecule}</td>
-                        <td className="text-right py-2.5 sm:py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                        <td className="text-right py-2.5 sm:py-1.5 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
-                        <td className={`text-right py-2.5 sm:py-1.5 font-bold hidden sm:table-cell ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                        <td className="text-right py-2.5 sm:py-1.5 font-semibold text-slate-700">{fmt(s.metricTY)}</td>
+                        <td className="text-right py-2.5 sm:py-1.5 text-slate-500 hidden sm:table-cell">{fmt(s.metricLY)}</td>
+                        <td className={`text-right py-2.5 sm:py-1.5 font-bold hidden sm:table-cell ${s.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {s.absChange >= 0 ? '+' : ''}{fmt(s.absChange)}
                         </td>
                         <td className={`text-right py-2.5 sm:py-1.5 font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                           {s.growth >= 0 ? '+' : ''}{s.growth.toFixed(0)}%
@@ -714,16 +751,16 @@ export function DispensePage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                     <div className="bg-blue-50/50 rounded-lg p-2.5 text-center">
-                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">TY Value</p>
-                      <p className="text-sm font-bold text-slate-800">{formatCompactDollar(skuMonthlyTrend.reduce((s, m) => s + m.sales, 0))}</p>
+                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">{isValue ? 'TY Value' : 'TY Units'}</p>
+                      <p className="text-sm font-bold text-slate-800">{fmt(skuMonthlyTrend.reduce((s, m) => s + (isValue ? m.sales : m.units), 0))}</p>
                     </div>
                     <div className="bg-blue-50/50 rounded-lg p-2.5 text-center">
                       <p className="text-[8px] text-slate-500 uppercase tracking-wide">Avg Monthly</p>
-                      <p className="text-sm font-bold text-slate-800">{formatCompactDollar(skuMonthlyTrend.reduce((s, m) => s + m.sales, 0) / skuMonthlyTrend.length)}</p>
+                      <p className="text-sm font-bold text-slate-800">{fmt(skuMonthlyTrend.reduce((s, m) => s + (isValue ? m.sales : m.units), 0) / skuMonthlyTrend.length)}</p>
                     </div>
                     <div className="bg-blue-50/50 rounded-lg p-2.5 text-center">
-                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">Total Units</p>
-                      <p className="text-sm font-bold text-slate-800">{formatCompact(skuMonthlyTrend.reduce((s, m) => s + m.units, 0))}</p>
+                      <p className="text-[8px] text-slate-500 uppercase tracking-wide">{isValue ? 'Total Units' : 'Total Value'}</p>
+                      <p className="text-sm font-bold text-slate-800">{isValue ? formatCompact(skuMonthlyTrend.reduce((s, m) => s + m.units, 0)) : formatCompactDollar(skuMonthlyTrend.reduce((s, m) => s + m.sales, 0))}</p>
                     </div>
                   </div>
                   <ResponsiveContainer width="100%" height={180}>
@@ -731,8 +768,8 @@ export function DispensePage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" />
                       <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                      <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                      <Line type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
+                      <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                      <Line type="monotone" dataKey={isValue ? 'sales' : 'units'} stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

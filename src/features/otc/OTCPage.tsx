@@ -9,6 +9,7 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 import type { ManufacturerSummary } from '../../data/types'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 
 const COLORS = ['#0D9488', '#2563EB', '#7C3AED', '#D97706', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
 
@@ -53,6 +54,7 @@ export function OTCPage() {
   const [narrativeOpen, setNarrativeOpen] = useState(false)
   const [skuTab, setSkuTab] = useState<'value' | 'growing' | 'declining'>('value')
   const [catTab, setCatTab] = useState<'leaders' | 'gainers' | 'decliners'>('leaders')
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
   const location = useLocation()
   const drillRef = useRef<HTMLDivElement>(null)
   const skipMfrReset = useRef(false)
@@ -75,7 +77,12 @@ export function OTCPage() {
 
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
   const totalUnits = useMemo(() => otcCategories.reduce((s, c) => s + c.tyUnits, 0), [otcCategories])
+  const totalUnitsLY = useMemo(() => otcCategories.reduce((s, c) => s + c.lyUnits, 0), [otcCategories])
+  const unitGrowth = totalUnitsLY ? ((totalUnits - totalUnitsLY) / totalUnitsLY) * 100 : 0
   const mfrCount = useMemo(() => new Set(state.otc.map(r => r.manufacturer)).size, [state.otc])
+
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
 
   // Auto-narrative
   const narrative = useMemo(() => generateOTCNarrative(
@@ -121,10 +128,10 @@ export function OTCPage() {
     let catData = state.otc.filter(r => r.market === selectedCat)
     if (selectedMfr) catData = catData.filter(r => r.manufacturer === selectedMfr)
     return catData
-      .map(r => ({ name: r.packName, manufacturer: r.manufacturer, tyValue: r.tyValue, lyValue: r.lyValue, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 0 }))
-      .sort((a, b) => b.tyValue - a.tyValue)
+      .map(r => ({ name: r.packName, manufacturer: r.manufacturer, tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits, growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 0, unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 0 }))
+      .sort((a, b) => isValue ? b.tyValue - a.tyValue : b.tyUnits - a.tyUnits)
       .slice(0, 20)
-  }, [selectedCat, selectedMfr, state.otc])
+  }, [selectedCat, selectedMfr, state.otc, isValue])
 
   // Growth winners & losers
   // Category landscape — absolute $ movers & market share
@@ -183,10 +190,12 @@ export function OTCPage() {
       lyUnits: r.lyUnits,
       growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
       absChange: r.tyValue - r.lyValue,
+      absUnitChange: r.tyUnits - r.lyUnits,
+      unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
     }))
-    const byValue = [...all].sort((a, b) => b.tyValue - a.tyValue)
-    const growing = [...all].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => b.growth - a.growth).slice(0, 15)
-    const declining = [...all].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
+    const byValue = [...all].sort((a, b) => isValue ? b.tyValue - a.tyValue : b.tyUnits - a.tyUnits)
+    const growing = [...all].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => isValue ? b.growth - a.growth : b.unitGrowth - a.unitGrowth).slice(0, 15)
+    const declining = [...all].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => isValue ? a.absChange - b.absChange : a.absUnitChange - b.absUnitChange).slice(0, 15)
     // Pareto: how many SKUs account for 80% of value
     const totalTY = byValue.reduce((s, r) => s + r.tyValue, 0)
     let cum = 0, p80 = 0
@@ -198,7 +207,7 @@ export function OTCPage() {
       declining,
       pareto80: { count: p80, pct: all.length ? (p80 / all.length) * 100 : 0 },
     }
-  }, [state.otc])
+  }, [state.otc, isValue])
 
   const activeOtcSkuList = skuTab === 'value' ? skuInsights.byValue : skuTab === 'growing' ? skuInsights.growing : skuInsights.declining
 
@@ -219,11 +228,14 @@ export function OTCPage() {
         </div>
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 hidden sm:block">OTC / Front of Shop</h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">Consumer health market — category & manufacturer drill-in</p>
+        <div className="flex items-center gap-3 mt-2">
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title="OTC Market" value={formatCompactDollar(otcTotalTY)} delta={otcGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
+        <KPICard title="OTC Market" value={fmt(isValue ? otcTotalTY : totalUnits)} delta={isValue ? otcGrowth : unitGrowth} deltaLabel="YoY" icon={<ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Total Units" value={formatCompact(totalUnits)} icon={<Package className="w-4 h-4" />} />
         <KPICard title="Manufacturers" value={`${mfrCount}`} icon={<Factory className="w-4 h-4" />} />
         <KPICard title="Categories" value={`${otcCategories.length}`} icon={<TrendingUp className="w-4 h-4" />} />
@@ -300,12 +312,12 @@ export function OTCPage() {
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           {(isGainerTab || isDeclinerTab) && (
                             <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {c.absChange >= 0 ? '+' : ''}{formatCompactDollar(c.absChange)}
+                              {c.absChange >= 0 ? '+' : ''}{fmt(isValue ? c.absChange : (c.tyUnits - c.lyUnits))}
                             </span>
                           )}
-                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{formatCompactDollar(c.tyValue)}</span>
-                          <span className={`text-[9px] font-bold w-12 text-right ${c.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                            {c.valueGrowth >= 0 ? '+' : ''}{c.valueGrowth.toFixed(1)}%
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
+                          <span className={`text-[9px] font-bold w-12 text-right ${(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? '+' : ''}{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%
                           </span>
                         </div>
                       </div>
@@ -377,8 +389,8 @@ export function OTCPage() {
                 <th className="text-left py-2 text-slate-500 font-medium">Product</th>
                 <th className="text-left py-2 text-slate-500 font-medium w-24 hidden md:table-cell">Manufacturer</th>
                 <th className="text-left py-2 text-slate-500 font-medium w-24 hidden lg:table-cell">Category</th>
-                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">Value</th>
-                <th className="text-right py-2 text-slate-500 font-medium w-18 hidden sm:table-cell">LY Value</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-16 sm:w-18">{isValue ? 'Value' : 'Units'}</th>
+                <th className="text-right py-2 text-slate-500 font-medium w-18 hidden sm:table-cell">{isValue ? 'LY Value' : 'LY Units'}</th>
                 <th className="text-right py-2 text-slate-500 font-medium w-14 sm:w-16">Chg</th>
               </tr>
             </thead>
@@ -389,10 +401,10 @@ export function OTCPage() {
                   <td className="py-2.5 sm:py-2 text-slate-700 truncate max-w-[120px] sm:max-w-[200px] font-medium group-hover:text-teal-700">{s.sku}</td>
                   <td className="py-2.5 sm:py-2 text-slate-500 truncate hidden md:table-cell text-[9px]">{s.manufacturer}</td>
                   <td className="py-2.5 sm:py-2 text-slate-400 truncate hidden lg:table-cell text-[9px]">{s.category}</td>
-                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                  <td className="text-right py-2.5 sm:py-2 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
-                  <td className={`text-right py-2.5 sm:py-2 font-bold ${s.growth >= 0 && s.growth < 900 ? 'text-emerald-600' : s.growth >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
-                    {s.growth >= 900 ? 'New' : `${s.growth >= 0 ? '+' : ''}${s.growth.toFixed(0)}%`}
+                  <td className="text-right py-2.5 sm:py-2 font-semibold text-slate-700">{fmt(isValue ? s.tyValue : s.tyUnits)}</td>
+                  <td className="text-right py-2.5 sm:py-2 text-slate-500 hidden sm:table-cell">{fmt(isValue ? s.lyValue : s.lyUnits)}</td>
+                  <td className={`text-right py-2.5 sm:py-2 font-bold ${(isValue ? s.growth : s.unitGrowth) >= 0 && (isValue ? s.growth : s.unitGrowth) < 900 ? 'text-emerald-600' : (isValue ? s.growth : s.unitGrowth) >= 900 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {(isValue ? s.growth : s.unitGrowth) >= 900 ? 'New' : `${(isValue ? s.growth : s.unitGrowth) >= 0 ? '+' : ''}${(isValue ? s.growth : s.unitGrowth).toFixed(0)}%`}
                   </td>
                 </tr>
               ))}
@@ -447,13 +459,13 @@ export function OTCPage() {
                 <h3 className="text-xs font-bold text-slate-800 mb-2 leading-tight">{cat.category}</h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
                   <div>
-                    <span className="text-slate-400">TY Value</span>
-                    <p className="font-semibold text-slate-700">{formatCompactDollar(cat.tyValue)}</p>
+                    <span className="text-slate-400">{isValue ? 'TY Value' : 'TY Units'}</span>
+                    <p className="font-semibold text-slate-700">{fmt(isValue ? cat.tyValue : cat.tyUnits)}</p>
                   </div>
                   <div>
                     <span className="text-slate-400">Growth</span>
-                    <p className={`font-bold ${cat.valueGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {cat.valueGrowth >= 0 ? '+' : ''}{cat.valueGrowth.toFixed(1)}%
+                    <p className={`font-bold ${(isValue ? cat.valueGrowth : cat.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {(isValue ? cat.valueGrowth : cat.unitGrowth) >= 0 ? '+' : ''}{(isValue ? cat.valueGrowth : cat.unitGrowth).toFixed(1)}%
                     </p>
                   </div>
                   <div>
@@ -510,7 +522,7 @@ export function OTCPage() {
                         <button key={m.manufacturer} onClick={() => setSelectedMfr(m.manufacturer)} className="w-full flex items-center gap-1.5 text-left hover:bg-emerald-50 active:bg-emerald-100/50 rounded p-1 -mx-1 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
-                          <span className="text-[9px] font-bold text-emerald-600">+{formatCompactDollar(m.absChange)}</span>
+                          <span className="text-[9px] font-bold text-emerald-600">+{fmt(isValue ? m.absChange : (m.tyUnits - m.lyUnits))}</span>
                         </button>
                       ))}
                     </div>
@@ -524,7 +536,7 @@ export function OTCPage() {
                         <button key={m.manufacturer} onClick={() => setSelectedMfr(m.manufacturer)} className="w-full flex items-center gap-1.5 text-left hover:bg-red-50 active:bg-red-100/50 rounded p-1 -mx-1 transition-colors">
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
                           <span className="text-[9px] text-slate-600 flex-1 truncate">{m.manufacturer}</span>
-                          <span className="text-[9px] font-bold text-red-500">{formatCompactDollar(m.absChange)}</span>
+                          <span className="text-[9px] font-bold text-red-500">{fmt(isValue ? m.absChange : (m.tyUnits - m.lyUnits))}</span>
                         </button>
                       ))}
                     </div>
@@ -539,16 +551,17 @@ export function OTCPage() {
             <div>
               <h4 className="text-xs font-semibold text-slate-600 mb-3">Top Manufacturers</h4>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={mfrBreakdown.slice(0, 10)} layout="vertical" margin={{ left: 10 }}>
+                <BarChart data={mfrBreakdown.slice(0, 10)} layout="vertical" margin={{ left: 10 }} onClick={(e) => { if (e?.activeLabel) { const label = String(e.activeLabel); setSelectedMfr(selectedMfr === label ? null : label) } }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
                   <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={130} />
                   <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                  <Bar dataKey="tyValue" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out">
-                    {mfrBreakdown.slice(0, 10).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  <Bar dataKey={isValue ? 'tyValue' : 'tyUnits'} name={isValue ? 'TY Value' : 'TY Units'} radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out" className="cursor-pointer">
+                    {mfrBreakdown.slice(0, 10).map((m, i) => <Cell key={i} fill={selectedMfr === m.manufacturer ? COLORS[i % COLORS.length] : selectedMfr ? `${COLORS[i % COLORS.length]}44` : COLORS[i % COLORS.length]} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <p className="mt-1 text-[8px] text-teal-400 italic">Click a bar to drill into that manufacturer&apos;s SKUs</p>
             </div>
 
             {/* Manufacturer share & growth — click to filter SKUs */}
@@ -557,7 +570,7 @@ export function OTCPage() {
               <div className="space-y-0.5 max-h-[280px] overflow-y-auto scrollbar-thin">
                 {mfrBreakdown.slice(0, 15).map((m, i) => {
                   const isSel = selectedMfr === m.manufacturer
-                  const absChange = m.tyValue - m.lyValue
+                  const absChange = isValue ? m.tyValue - m.lyValue : m.tyUnits - m.lyUnits
                   return (
                     <button
                       key={m.manufacturer}
@@ -566,9 +579,9 @@ export function OTCPage() {
                     >
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                       <span className="text-[9px] sm:text-[10px] text-slate-600 flex-1 truncate text-left">{m.manufacturer}</span>
-                      <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 w-12 text-right hidden sm:block">{formatCompactDollar(m.tyValue)}</span>
+                      <span className="text-[8px] sm:text-[9px] font-semibold text-slate-500 w-12 text-right hidden sm:block">{fmt(isValue ? m.tyValue : m.tyUnits)}</span>
                       <span className={`text-[8px] sm:text-[9px] font-bold w-14 text-right hidden sm:block ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                        {absChange >= 0 ? '+' : ''}{fmt(absChange)}
                       </span>
                       <div className="w-10 h-1.5 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(m.share, 100)}%`, backgroundColor: COLORS[i % COLORS.length] }} />
@@ -602,26 +615,27 @@ export function OTCPage() {
                     <tr className="border-b border-slate-100">
                       <th className="text-left py-1.5 text-slate-500 font-medium">Product</th>
                       {!selectedMfr && <th className="text-left py-1.5 text-slate-500 font-medium w-28">Manufacturer</th>}
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-20">TY Value</th>
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-20 hidden sm:table-cell">LY Value</th>
-                      <th className="text-right py-1.5 text-slate-500 font-medium w-18">$ Change</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-20">{isValue ? 'TY Value' : 'TY Units'}</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-20 hidden sm:table-cell">{isValue ? 'LY Value' : 'LY Units'}</th>
+                      <th className="text-right py-1.5 text-slate-500 font-medium w-18">{isValue ? '$ Change' : 'Unit Chg'}</th>
                       <th className="text-right py-1.5 text-slate-500 font-medium w-16">Growth</th>
                     </tr>
                   </thead>
                   <tbody>
                     {topSkus.map((s) => {
-                      const absChange = s.tyValue - s.lyValue
+                      const absChange = isValue ? s.tyValue - s.lyValue : s.tyUnits - s.lyUnits
+                      const growth = isValue ? s.growth : s.unitGrowth
                       return (
                       <tr key={s.name} className="border-b border-slate-50 hover:bg-slate-50/50">
                         <td className="py-1.5 text-slate-700 truncate max-w-[200px]">{s.name}</td>
                         {!selectedMfr && <td className="py-1.5 text-slate-400 truncate text-[9px]">{s.manufacturer}</td>}
-                        <td className="text-right py-1.5 font-semibold text-slate-700">{formatCompactDollar(s.tyValue)}</td>
-                        <td className="text-right py-1.5 text-slate-500 hidden sm:table-cell">{formatCompactDollar(s.lyValue)}</td>
+                        <td className="text-right py-1.5 font-semibold text-slate-700">{fmt(isValue ? s.tyValue : s.tyUnits)}</td>
+                        <td className="text-right py-1.5 text-slate-500 hidden sm:table-cell">{fmt(isValue ? s.lyValue : s.lyUnits)}</td>
                         <td className={`text-right py-1.5 font-bold ${absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {absChange >= 0 ? '+' : ''}{formatCompactDollar(absChange)}
+                          {absChange >= 0 ? '+' : ''}{fmt(absChange)}
                         </td>
-                        <td className={`text-right py-1.5 font-bold ${s.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {s.growth >= 0 ? '+' : ''}{s.growth.toFixed(0)}%
+                        <td className={`text-right py-1.5 font-bold ${growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {growth >= 0 ? '+' : ''}{growth.toFixed(0)}%
                         </td>
                       </tr>
                       )

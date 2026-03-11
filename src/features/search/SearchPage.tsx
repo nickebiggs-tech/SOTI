@@ -11,8 +11,10 @@ import {
 import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompactDollar, formatCompact, formatDelta } from '../../lib/formatters'
+import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 
-const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2']
+const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D', '#0369A1', '#BE185D', '#B45309', '#059669', '#6D28D9', '#E11D48', '#0E7490', '#C2410C', '#7C2D12', '#4338CA']
+const MAX_SELECTIONS = 20
 
 type MarketType = 'rx' | 'otc'
 type SortField = 'name' | 'tyValue' | 'growth' | 'absChange'
@@ -83,6 +85,9 @@ export function SearchPage() {
   const [groupByBrand, setGroupByBrand] = useState(false)
   const [radarHelpOpen, setRadarHelpOpen] = useState(false)
   const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set())
+  const [metricMode, setMetricMode] = useState<MetricMode>('value')
+  const isValue = metricMode === 'value'
+  const fmt = isValue ? formatCompactDollar : formatCompact
 
   // Load monthly data when Rx products are selected (for trend chart)
   useEffect(() => {
@@ -217,7 +222,7 @@ export function SearchPage() {
     setSelected(prev => {
       const exists = prev.find(s => s.id === item.id)
       if (exists) return prev.filter(s => s.id !== item.id)
-      if (prev.length >= 8) return prev
+      if (prev.length >= MAX_SELECTIONS) return prev
       return [...prev, item]
     })
     // In group-by-brand mode, clear search after selecting so user can immediately search for next brand
@@ -236,7 +241,7 @@ export function SearchPage() {
 
   const addAllResults = useCallback(() => {
     setSelected(prev => {
-      const remaining = 8 - prev.length
+      const remaining = MAX_SELECTIONS - prev.length
       if (remaining <= 0) return prev
       const existingIds = new Set(prev.map(s => s.id))
       const toAdd = results.filter(r => !existingIds.has(r.id)).slice(0, remaining)
@@ -275,21 +280,21 @@ export function SearchPage() {
     return selected.map((s, i) => ({
       name: s.name.length > 25 ? s.name.slice(0, 23) + '...' : s.name,
       fullName: s.name,
-      tyValue: s.tyValue,
-      lyValue: s.lyValue,
+      tyValue: isValue ? s.tyValue : s.tyUnits,
+      lyValue: isValue ? s.lyValue : s.lyUnits,
       color: COLORS[i % COLORS.length],
     }))
-  }, [selected])
+  }, [selected, isValue])
 
   const growthChart = useMemo(() => {
     if (selected.length === 0) return []
     return selected.map((s, i) => ({
       name: s.name.length > 25 ? s.name.slice(0, 23) + '...' : s.name,
       fullName: s.name,
-      absChange: s.absChange,
+      absChange: isValue ? s.absChange : (s.tyUnits - s.lyUnits),
       color: COLORS[i % COLORS.length],
     }))
-  }, [selected])
+  }, [selected, isValue])
 
   // Monthly trend data (Rx only) — build from ethMonthly when loaded
   const trendData = useMemo(() => {
@@ -427,14 +432,17 @@ export function SearchPage() {
           <span className="text-blue-600">Search & Compare</span>
           <span className="text-sm font-medium text-slate-400 ml-2">Product Intelligence</span>
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
-          Search by {market === 'rx' ? 'SKU, molecule, or manufacturer' : 'item name, category, or manufacturer'} — select up to 8 products to compare side-by-side
-        </p>
+        <div className="flex items-center justify-between mt-0.5 sm:mt-1">
+          <p className="text-xs sm:text-sm text-slate-500">
+            Search by {market === 'rx' ? 'SKU, molecule, or manufacturer' : 'item name, category, or manufacturer'} — select up to {MAX_SELECTIONS} products to compare side-by-side
+          </p>
+          <MetricToggle mode={metricMode} onChange={setMetricMode} />
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 stagger-children">
-        <KPICard title={`${marketLabel} Market`} value={formatCompactDollar(totalMarket)} icon={market === 'rx' ? <Pill className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />} />
+        <KPICard title={`${marketLabel} Market`} value={isValue ? formatCompactDollar(totalMarket) : formatCompact(market === 'rx' ? state.ethSkus.reduce((s, r) => s + r.tyUnits, 0) : state.otc.reduce((s, r) => s + r.tyUnits, 0))} icon={market === 'rx' ? <Pill className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Categories" value={`${catCount}`} icon={<Search className="w-4 h-4" />} />
         <KPICard title={`${itemLabel}s`} value={formatCompact(totalItems)} icon={market === 'rx' ? <Pill className="w-4 h-4" /> : <ShoppingBag className="w-4 h-4" />} />
         <KPICard title="Comparing" value={`${selected.length}`} icon={<GitCompareArrows className="w-4 h-4" />} />
@@ -520,12 +528,12 @@ export function SearchPage() {
           </div>
 
           {/* Prompt to search for more when items are selected but search is empty */}
-          {selected.length > 0 && selected.length < 8 && search.length < 2 && (
+          {selected.length > 0 && selected.length < MAX_SELECTIONS && search.length < 2 && (
             <div className="flex items-center gap-2 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
               <Plus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <p className="text-[10px] text-emerald-700 font-medium">
                 {selected.length} {groupByBrand ? 'brand' : itemLabel.toLowerCase()}{selected.length > 1 ? 's' : ''} selected.
-                Search for more to compare side-by-side (up to 8).
+                Search for more to compare side-by-side (up to {MAX_SELECTIONS}).
                 {groupByBrand && selected.length === 1 && <span className="text-emerald-600"> Try searching &ldquo;{selected[0]!.name.includes('OZEMPIC') ? 'Mounjaro' : 'Ozempic'}&rdquo; to compare brands.</span>}
               </p>
             </div>
@@ -537,13 +545,13 @@ export function SearchPage() {
               {results.length > 0 && (
                 <button
                   onClick={addAllResults}
-                  disabled={selected.length >= 8 || results.every(r => selected.some(s => s.id === r.id))}
+                  disabled={selected.length >= MAX_SELECTIONS || results.every(r => selected.some(s => s.id === r.id))}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-all
                     bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 hover:border-blue-300
                     disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50 disabled:hover:border-blue-200"
                 >
                   <ListPlus className="w-3 h-3" />
-                  Add All ({Math.min(results.filter(r => !selected.some(s => s.id === r.id)).length, 8 - selected.length)})
+                  Add All ({Math.min(results.filter(r => !selected.some(s => s.id === r.id)).length, MAX_SELECTIONS - selected.length)})
                 </button>
               )}
             </div>
@@ -586,10 +594,10 @@ export function SearchPage() {
                 {itemLabel} {sortField === 'name' && <ArrowUpDown className="w-2.5 h-2.5" />}
               </button>
               <button onClick={() => handleSort('tyValue')} className="w-20 sm:w-24 text-right flex items-center justify-end gap-0.5 hover:text-blue-600">
-                TY Value {sortField === 'tyValue' && <ArrowUpDown className="w-2.5 h-2.5" />}
+                {isValue ? 'TY Value' : 'TY Units'} {sortField === 'tyValue' && <ArrowUpDown className="w-2.5 h-2.5" />}
               </button>
               <button onClick={() => handleSort('absChange')} className="w-20 sm:w-24 text-right flex items-center justify-end gap-0.5 hover:text-blue-600">
-                $ Change {sortField === 'absChange' && <ArrowUpDown className="w-2.5 h-2.5" />}
+                {isValue ? '$ Change' : 'Unit Chg'} {sortField === 'absChange' && <ArrowUpDown className="w-2.5 h-2.5" />}
               </button>
               <button onClick={() => handleSort('growth')} className="w-14 sm:w-16 text-right flex items-center justify-end gap-0.5 hover:text-blue-600">
                 Growth {sortField === 'growth' && <ArrowUpDown className="w-2.5 h-2.5" />}
@@ -623,12 +631,12 @@ export function SearchPage() {
                       </div>
                       <p className="text-[8px] sm:text-[9px] text-slate-400 truncate">{item.manufacturer} · {item.category}{item.molecule ? ` · ${item.molecule}` : ''}</p>
                     </div>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-700 w-20 sm:w-24 text-right shrink-0">{formatCompactDollar(item.tyValue)}</span>
-                    <span className={`text-[10px] sm:text-[11px] font-bold w-20 sm:w-24 text-right shrink-0 ${item.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {item.absChange >= 0 ? '+' : ''}{formatCompactDollar(item.absChange)}
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-slate-700 w-20 sm:w-24 text-right shrink-0">{isValue ? formatCompactDollar(item.tyValue) : formatCompact(item.tyUnits)}</span>
+                    <span className={`text-[10px] sm:text-[11px] font-bold w-20 sm:w-24 text-right shrink-0 ${(isValue ? item.absChange : (item.tyUnits - item.lyUnits)) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {(isValue ? item.absChange : (item.tyUnits - item.lyUnits)) >= 0 ? '+' : ''}{isValue ? formatCompactDollar(item.absChange) : formatCompact(item.tyUnits - item.lyUnits)}
                     </span>
-                    <span className={`text-[9px] sm:text-[10px] font-bold w-14 sm:w-16 text-right shrink-0 ${item.growth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {item.growth >= 900 ? 'NEW' : formatDelta(item.growth)}
+                    <span className={`text-[9px] sm:text-[10px] font-bold w-14 sm:w-16 text-right shrink-0 ${(isValue ? item.growth : item.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {item.growth >= 900 ? 'NEW' : formatDelta(isValue ? item.growth : item.unitGrowth)}
                     </span>
                   </button>
                 )
@@ -751,18 +759,18 @@ export function SearchPage() {
           <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <TrendingUp className="w-4 h-4 text-blue-600 shrink-0" />
-              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Value Comparison</h3>
+              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">{isValue ? 'Value' : 'Volume'} Comparison</h3>
               <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">TY vs LY</span>
             </div>
-            <p className="text-[9px] text-slate-500 mt-1">Side-by-side value comparison across selected {groupByBrand ? 'brands' : 'products'}</p>
+            <p className="text-[9px] text-slate-500 mt-1">Side-by-side {isValue ? 'value' : 'volume'} comparison across selected {groupByBrand ? 'brands' : 'products'}</p>
           </div>
           <div className="p-3 sm:p-5">
             <ResponsiveContainer width="100%" height={Math.max(200, selected.length * 50 + 40)}>
               <BarChart data={comparisonChart} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+                <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={160} />
-                <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
+                <Tooltip formatter={(v) => fmt(v as number)} />
                 <Bar dataKey="tyValue" name="This Year" fill="#2563EB" radius={[0, 4, 4, 0]} animationDuration={800} />
                 <Bar dataKey="lyValue" name="Last Year" fill="#94a3b8" radius={[0, 4, 4, 0]} animationDuration={800} />
               </BarChart>
@@ -777,7 +785,7 @@ export function SearchPage() {
           <div className="px-3 sm:px-5 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/60 to-indigo-50/40">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <TrendingDown className="w-4 h-4 text-blue-600 shrink-0" />
-              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">Value Change ($)</h3>
+              <h3 className="text-[11px] sm:text-xs font-bold text-slate-800">{isValue ? 'Value Change ($)' : 'Unit Change'}</h3>
               <span className="text-[7px] sm:text-[8px] bg-blue-100 text-blue-600 font-semibold px-1 sm:px-1.5 py-0.5 rounded">Absolute YoY</span>
             </div>
           </div>
@@ -785,10 +793,10 @@ export function SearchPage() {
             <ResponsiveContainer width="100%" height={Math.max(200, selected.length * 50 + 40)}>
               <BarChart data={growthChart} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+                <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={160} />
-                <Tooltip formatter={(v) => formatCompactDollar(v as number)} />
-                <Bar dataKey="absChange" name="$ Change" radius={[0, 4, 4, 0]} animationDuration={800}>
+                <Tooltip formatter={(v) => fmt(v as number)} />
+                <Bar dataKey="absChange" name={isValue ? '$ Change' : 'Unit Change'} radius={[0, 4, 4, 0]} animationDuration={800}>
                   {growthChart.map((c, i) => <Cell key={i} fill={c.absChange >= 0 ? '#059669' : '#DC2626'} />)}
                 </Bar>
               </BarChart>
