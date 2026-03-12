@@ -301,7 +301,7 @@ export function DispensePage() {
       </div>
 
       {/* Market Narrative — compact collapsible */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl overflow-hidden animate-fade-in-up animate-narrative-glow">
         <button onClick={() => setNarrativeOpen(v => !v)} className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -349,7 +349,7 @@ export function DispensePage() {
           ))}
         </div>
         <div className="p-3 sm:p-5">
-          <div className="space-y-1">
+          <div className="space-y-1 stagger-rows">
             {activeCatList.map((c, i) => {
               const isGainerTab = catTab === 'gainers'
               const isDeclinerTab = catTab === 'decliners'
@@ -370,13 +370,13 @@ export function DispensePage() {
                         <span className="text-[10px] sm:text-[11px] font-semibold text-slate-800 truncate group-hover:text-primary">{c.category}</span>
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           {(isGainerTab || isDeclinerTab) && (
-                            <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            <span className={`text-[10px] sm:text-[11px] font-bold animate-delta-pop ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`} style={{ animationDelay: `${200 + i * 50}ms` }}>
                               {c.absChange >= 0 ? '+' : ''}{fmt(c.absChange)}
                             </span>
                           )}
                           <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 hidden sm:inline">{fmt(c.metricTY)}</span>
                           <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600 sm:hidden">{fmt(c.metricTY)}</span>
-                          <span className={`text-[9px] font-bold w-12 text-right ${c.metricGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          <span className={`text-[9px] font-bold w-12 text-right animate-delta-pop ${c.metricGrowth >= 0 ? 'text-emerald-600' : 'text-red-500'}`} style={{ animationDelay: `${300 + i * 50}ms` }}>
                             {c.metricGrowth >= 0 ? '+' : ''}{c.metricGrowth.toFixed(1)}%
                           </span>
                         </div>
@@ -384,10 +384,11 @@ export function DispensePage() {
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full rounded-full transition-all duration-700"
+                            className="h-full rounded-full animate-bar-fill"
                             style={{
                               width: `${barWidth}%`,
                               backgroundColor: isDeclinerTab ? '#DC2626' : isGainerTab ? '#059669' : COLORS[i % COLORS.length],
+                              animationDelay: `${200 + i * 80}ms`,
                             }}
                           />
                         </div>

@@ -37,16 +37,20 @@ interface SearchItem {
   skuNames?: string[]        // list of individual SKU names in this group
 }
 
-/** Extract brand name from a SKU name for grouping.
- *  Strategy: take leading words that are NOT a dosage form, strength, or pack size.
+/** Extract brand name from a SKU/pack name for grouping.
+ *  Strategy: take leading words that are NOT a dosage form, strength, pack size,
+ *  or common product descriptor. Capped at 3 words max for OTC safety.
  *  e.g. "MOUNJARO KWIKPEN PREFILLED PEN 15 MG 2.4 ML" → "MOUNJARO"
  *  e.g. "OZEMPIC PREFILLED PEN 0.25 MG 1.5 ML" → "OZEMPIC"
  *  e.g. "NUROFEN ZAVANCE CAPLET 256 MG 24" → "NUROFEN ZAVANCE"
+ *  e.g. "PANADOL OSTEO CAPLETS 665 MG 96" → "PANADOL OSTEO"
+ *  e.g. "BBOX SIPPY CUP DISNEY MICKEY 240 ML" → "BBOX"
  */
-function extractBrandName(name: string): string {
+function extractBrandName(name: string, isOtc: boolean): string {
   const upper = name.toUpperCase()
-  // Common dosage form words that signal end of brand name
-  const formWords = new Set([
+  // Pharmaceutical dosage forms + packaging + OTC product descriptors
+  const stopWords = new Set([
+    // Dosage forms
     'TABLET', 'TABLETS', 'TAB', 'CAPSULE', 'CAPSULES', 'CAP', 'CAPLET', 'CAPLETS',
     'AMPOULE', 'AMPOULES', 'VIAL', 'VIALS', 'PREFILLED', 'PEN', 'KWIKPEN',
     'INJECTION', 'SOLUTION', 'SUSPENSION', 'SYRUP', 'CREAM', 'OINTMENT', 'GEL',
@@ -54,18 +58,38 @@ function extractBrandName(name: string): string {
     'SACHET', 'SACHETS', 'LIQUID', 'ORAL', 'IV', 'INFUSION',
     'BOTTLE', 'PACK', 'BOX', 'STRIP', 'BLISTER',
     'MODIFIED', 'RELEASE', 'EXTENDED', 'SUSTAINED', 'DELAYED',
-    'FILMCOATED', 'FILM-COATED', 'COATED', 'CHEWABLE', 'DISPERSIBLE',
-    'EFFERVESCENT', 'SOLUBLE', 'SOFTGEL',
+    'FILMCOATED', 'FILM-COATED', 'FILM', 'COATED', 'CHEWABLE', 'DISPERSIBLE',
+    'EFFERVESCENT', 'SOLUBLE', 'SOFTGEL', 'ENTERIC',
+    // OTC product types & descriptors
+    'WASH', 'SHAMPOO', 'CONDITIONER', 'LOTION', 'MOISTURISER', 'MOISTURIZER',
+    'CLEANSER', 'SERUM', 'BALM', 'OIL', 'SUNSCREEN', 'SPF',
+    'WIPES', 'WIPE', 'TISSUES', 'BANDAGE', 'DRESSING',
+    'CUP', 'SIPPY', 'STRAW', 'STRAWS', 'BRUSH', 'COMB', 'FEEDER',
+    'DRINK', 'INSULATED', 'SPORT', 'TRAINING',
+    'NASAL', 'AQUEOUS', 'AEROSOL', 'MDI',
+    'LINCT', 'LINCTUS', 'ELIXIR', 'MIXTURE', 'EMULSION',
+    'TEST', 'STRIPS', 'SENSOR', 'NEEDLES', 'LANCETS',
+    'ONCE', 'DAILY', 'DOSE', 'TWIN', 'TRIPLE', 'DUAL', 'DOUBLE',
+    'AUTO', 'INJECT', 'AUTO-INJECT',
+    'ORIGINAL', 'EXTRA', 'FORTE', 'PLUS', 'RAPID', 'OSTEO',
+    'STRENGTH', 'REGULAR', 'MAXIMUM', 'ULTRA',
+    'DAY', 'NIGHT', 'CODEINE-FREE', 'SUGAR-FREE',
+    'CFC', 'FREE', 'WITH', 'AND', 'FOR', 'THE', 'OF', 'IN',
+    'VANILLA', 'STRAWBERRY', 'LEMON', 'LIME', 'BERRY', 'ORANGE', 'CHOCOLATE',
+    'CHOC', 'MINT', 'RASPBERRY', 'HONEY',
   ])
 
   const words = upper.split(/\s+/)
   const brand: string[] = []
+  const maxWords = isOtc ? 2 : 3 // OTC brands are typically 1-2 words
 
   for (const w of words) {
-    // Stop at form words, numeric values (strengths), or "MG/ML/MCG/G"
-    if (formWords.has(w)) break
+    if (brand.length >= maxWords) break
+    if (stopWords.has(w)) break
     if (/^\d/.test(w)) break
-    if (/^(MG|ML|MCG|G|IU|UNIT|UNITS|X)$/i.test(w)) break
+    if (/^(MG|ML|MCG|G|IU|UNIT|UNITS|X|Y|MG\/ML|MCG\/ML)$/i.test(w)) break
+    // Stop at compound strength patterns like "240MG/5ML"
+    if (/^\d+MG/i.test(w) || /^\d+MCG/i.test(w)) break
     brand.push(w)
   }
 
@@ -143,9 +167,10 @@ export function SearchPage() {
   // Grouped items — aggregate SKUs by brand name
   const groupedItems = useMemo((): SearchItem[] => {
     if (!groupByBrand) return allItems
+    const isOtc = market === 'otc'
     const groups = new Map<string, { items: SearchItem[]; brand: string }>()
     for (const item of allItems) {
-      const brand = extractBrandName(item.name)
+      const brand = extractBrandName(item.name, isOtc)
       const existing = groups.get(brand)
       if (existing) {
         existing.items.push(item)
@@ -562,7 +587,7 @@ export function SearchPage() {
         {results.length > 1 && !groupByBrand && (() => {
           const brands = new Map<string, number>()
           for (const r of results) {
-            const b = extractBrandName(r.name)
+            const b = extractBrandName(r.name, market === 'otc')
             brands.set(b, (brands.get(b) || 0) + 1)
           }
           const multiBrands = Array.from(brands.entries()).filter(([, c]) => c > 1)

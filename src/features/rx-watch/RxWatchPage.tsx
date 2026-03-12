@@ -215,7 +215,7 @@ export function RxWatchPage() {
       </div>
 
       {/* Auto-Narrative */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl overflow-hidden animate-fade-in-up animate-narrative-glow">
         <button onClick={() => setNarrativeOpen(v => !v)} className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">

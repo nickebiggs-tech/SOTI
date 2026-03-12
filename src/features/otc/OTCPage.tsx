@@ -242,7 +242,7 @@ export function OTCPage() {
       </div>
 
       {/* Market Narrative — compact collapsible */}
-      <div className="bg-gradient-to-r from-teal-900 to-emerald-900 rounded-xl overflow-hidden">
+      <div className="bg-gradient-to-r from-teal-900 to-emerald-900 rounded-xl overflow-hidden animate-fade-in-up animate-narrative-glow">
         <button onClick={() => setNarrativeOpen(v => !v)} className="w-full p-3 sm:p-4 flex items-start gap-3 text-left cursor-pointer">
           <Sparkles className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -290,7 +290,7 @@ export function OTCPage() {
           ))}
         </div>
         <div className="p-3 sm:p-5">
-          <div className="space-y-1">
+          <div className="space-y-1 stagger-rows">
             {activeCatList.map((c, i) => {
               const isGainerTab = catTab === 'gainers'
               const isDeclinerTab = catTab === 'decliners'
@@ -311,12 +311,12 @@ export function OTCPage() {
                         <span className="text-[10px] sm:text-[11px] font-semibold text-slate-800 truncate group-hover:text-teal-700">{c.category}</span>
                         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                           {(isGainerTab || isDeclinerTab) && (
-                            <span className={`text-[10px] sm:text-[11px] font-bold ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            <span className={`text-[10px] sm:text-[11px] font-bold animate-delta-pop ${c.absChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`} style={{ animationDelay: `${200 + i * 50}ms` }}>
                               {c.absChange >= 0 ? '+' : ''}{fmt(isValue ? c.absChange : (c.tyUnits - c.lyUnits))}
                             </span>
                           )}
                           <span className="text-[9px] sm:text-[10px] font-semibold text-slate-600">{fmt(isValue ? c.tyValue : c.tyUnits)}</span>
-                          <span className={`text-[9px] font-bold w-12 text-right ${(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          <span className={`text-[9px] font-bold w-12 text-right animate-delta-pop ${(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? 'text-emerald-600' : 'text-red-500'}`} style={{ animationDelay: `${300 + i * 50}ms` }}>
                             {(isValue ? c.valueGrowth : c.unitGrowth) >= 0 ? '+' : ''}{(isValue ? c.valueGrowth : c.unitGrowth).toFixed(1)}%
                           </span>
                         </div>
@@ -324,10 +324,11 @@ export function OTCPage() {
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full rounded-full transition-all duration-700"
+                            className="h-full rounded-full animate-bar-fill"
                             style={{
                               width: `${barWidth}%`,
                               backgroundColor: isDeclinerTab ? '#DC2626' : isGainerTab ? '#059669' : COLORS[i % COLORS.length],
+                              animationDelay: `${200 + i * 80}ms`,
                             }}
                           />
                         </div>

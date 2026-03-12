@@ -4,9 +4,11 @@ import {
   Pill,
   ShoppingBag,
   Search,
+  LogOut,
   MoreHorizontal,
 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { useAuth } from '../../auth/AuthContext'
 
 const BOTTOM_NAV_ITEMS = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
@@ -20,6 +22,8 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ onMoreTap }: BottomNavProps) {
+  const { logout } = useAuth()
+
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white border-t border-slate-200 safe-area-bottom">
       <div className="flex items-stretch justify-around h-14">
@@ -46,6 +50,13 @@ export function BottomNav({ onMoreTap }: BottomNavProps) {
         >
           <MoreHorizontal className="w-5 h-5" />
           <span>More</span>
+        </button>
+        <button
+          onClick={logout}
+          className="flex flex-col items-center justify-center flex-1 gap-0.5 text-[10px] font-medium text-slate-400 active:text-red-500 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Logout</span>
         </button>
       </div>
     </nav>
