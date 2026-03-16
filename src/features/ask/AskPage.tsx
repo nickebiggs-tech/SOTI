@@ -154,7 +154,7 @@ function MarkdownText({ text, className }: { text: string; className?: string })
   }
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+    const line = lines[i] ?? ''
     const trimmed = line.trim()
 
     // Bullet list items
@@ -227,7 +227,8 @@ function buildMonthlyContext(ethMonthly: EthRecord[]): string {
   const catMonthMap: Record<string, Record<number, number>> = {}
   ethMonthly.forEach(r => {
     if (!catMonthMap[r.category]) catMonthMap[r.category] = {}
-    catMonthMap[r.category][r.monthId] = (catMonthMap[r.category][r.monthId] ?? 0) + r.sales
+    const cm = catMonthMap[r.category]!
+    cm[r.monthId] = (cm[r.monthId] ?? 0) + r.sales
   })
   const catTotals = Object.entries(catMonthMap).map(([cat, months]) => ({
     cat, total: Object.values(months).reduce((s, v) => s + v, 0), months,
@@ -242,7 +243,7 @@ function buildMonthlyContext(ethMonthly: EthRecord[]): string {
   const skuMonthMap: Record<string, { cat: string; mfr: string; mol: string; months: Record<number, number>; total: number }> = {}
   ethMonthly.forEach(r => {
     if (!skuMonthMap[r.sku]) skuMonthMap[r.sku] = { cat: r.category, mfr: r.manufacturer, mol: r.molecule, months: {}, total: 0 }
-    const s = skuMonthMap[r.sku]
+    const s = skuMonthMap[r.sku]!
     s.months[r.monthId] = (s.months[r.monthId] ?? 0) + r.sales
     s.total += r.sales
   })
@@ -258,7 +259,8 @@ function buildMonthlyContext(ethMonthly: EthRecord[]): string {
   const molMonthMap: Record<string, Record<number, number>> = {}
   ethMonthly.forEach(r => {
     if (!molMonthMap[r.molecule]) molMonthMap[r.molecule] = {}
-    molMonthMap[r.molecule][r.monthId] = (molMonthMap[r.molecule][r.monthId] ?? 0) + r.sales
+    const mm = molMonthMap[r.molecule]!
+    mm[r.monthId] = (mm[r.monthId] ?? 0) + r.sales
   })
   const molTrends = Object.entries(molMonthMap)
     .map(([mol, months]) => ({ mol, total: Object.values(months).reduce((s, v) => s + v, 0), months }))
