@@ -1,19 +1,29 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, Legend,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database, Key, X, Check } from 'lucide-react'
 import { useData } from '../../data/DataProvider'
+import type { EthRecord } from '../../data/types'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function monthLabel(monthId: number): string {
+  const y = String(monthId).slice(0, 4)
+  const m = parseInt(String(monthId).slice(4), 10)
+  return `${MONTH_NAMES[m - 1]} ${y.slice(2)}`
+}
 
 const CHART_COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
 
 interface ChartSpec {
-  type: 'bar' | 'pie'
+  type: 'bar' | 'pie' | 'line'
   title: string
-  data: { name: string; value: number; value2?: number }[]
-  labels?: [string, string?]
+  data: Record<string, string | number>[]
+  labels?: string[]
+  series?: string[]  // for multi-series line charts — keys in data objects
 }
 
 /** Parse ```chart blocks from AI response */
@@ -38,15 +48,50 @@ function InlineChart({ spec }: { spec: ChartSpec }) {
 
   if (spec.type === 'pie') {
     return (
-      <div className="my-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
-        <p className="text-[10px] font-semibold text-slate-600 mb-2">{spec.title}</p>
-        <ResponsiveContainer width="100%" height={180}>
+      <div className="my-4 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <p className="text-xs font-semibold text-slate-700 mb-3">{spec.title}</p>
+        <ResponsiveContainer width="100%" height={240}>
           <PieChart>
-            <Pie data={spec.data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={35} paddingAngle={2} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
+            <Pie data={spec.data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={45} paddingAngle={3} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
               {spec.data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
             </Pie>
-            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} />
+            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+            <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
           </PieChart>
+        </ResponsiveContainer>
+      </div>
+    )
+  }
+
+  if (spec.type === 'line') {
+    // Determine series keys — explicit series array, or infer from data keys (excluding "name"/"month"/"date"/"label")
+    const skipKeys = new Set(['name', 'month', 'date', 'label', 'period'])
+    const seriesKeys = spec.series ?? Object.keys(spec.data[0] ?? {}).filter(k => !skipKeys.has(k))
+    const seriesLabels = spec.labels ?? seriesKeys
+
+    return (
+      <div className="my-4 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <p className="text-xs font-semibold text-slate-700 mb-3">{spec.title}</p>
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={spec.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" tickLine={false} />
+            <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} tickLine={false} />
+            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+            <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+            {seriesKeys.map((key, i) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                name={seriesLabels[i] ?? key}
+                stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                activeDot={{ r: 5 }}
+              />
+            ))}
+          </LineChart>
         </ResponsiveContainer>
       </div>
     )
@@ -54,20 +99,95 @@ function InlineChart({ spec }: { spec: ChartSpec }) {
 
   // Default: bar chart
   return (
-    <div className="my-3 bg-slate-50 rounded-lg p-3 border border-slate-100">
-      <p className="text-[10px] font-semibold text-slate-600 mb-2">{spec.title}</p>
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={spec.data} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+    <div className="my-4 bg-gradient-to-br from-slate-50 to-white rounded-xl p-4 border border-slate-200 shadow-sm">
+      <p className="text-xs font-semibold text-slate-700 mb-3">{spec.title}</p>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={spec.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="#94a3b8" interval={0} angle={-20} textAnchor="end" height={40} />
-          <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-          <Tooltip formatter={(v) => formatCompactDollar(Number(v))} />
-          <Bar dataKey="value" name={label1} fill="#2563EB" radius={[3, 3, 0, 0]} />
-          {label2 && <Bar dataKey="value2" name={label2} fill="#94a3b8" radius={[3, 3, 0, 0]} />}
+          <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={0} angle={-20} textAnchor="end" height={50} tickLine={false} />
+          <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} tickLine={false} />
+          <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+          <Bar dataKey="value" name={label1} fill="#2563EB" radius={[4, 4, 0, 0]} />
+          {label2 && <Bar dataKey="value2" name={label2} fill="#94a3b8" radius={[4, 4, 0, 0]} />}
         </BarChart>
       </ResponsiveContainer>
     </div>
   )
+}
+
+/** Lightweight markdown renderer for AI responses */
+function MarkdownText({ text, className }: { text: string; className?: string }) {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let listItems: string[] = []
+  let listKey = 0
+
+  function flushList() {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`list-${listKey++}`} className="list-disc list-inside space-y-0.5 my-1">
+          {listItems.map((item, j) => <li key={j}>{renderInline(item)}</li>)}
+        </ul>
+      )
+      listItems = []
+    }
+  }
+
+  function renderInline(s: string): React.ReactNode {
+    // Bold **text** and bullet cleanup
+    const parts: React.ReactNode[] = []
+    let remaining = s
+    let k = 0
+    while (remaining.length > 0) {
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
+      if (boldMatch && boldMatch.index !== undefined) {
+        if (boldMatch.index > 0) parts.push(remaining.slice(0, boldMatch.index))
+        parts.push(<strong key={k++} className="font-semibold">{boldMatch[1]}</strong>)
+        remaining = remaining.slice(boldMatch.index + boldMatch[0].length)
+      } else {
+        parts.push(remaining)
+        break
+      }
+    }
+    return parts.length === 1 ? parts[0] : <>{parts}</>
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    // Bullet list items
+    if (/^[-•]\s+/.test(trimmed)) {
+      listItems.push(trimmed.replace(/^[-•]\s+/, ''))
+      continue
+    }
+    // Numbered list items
+    if (/^\d+\.\s+/.test(trimmed)) {
+      listItems.push(trimmed.replace(/^\d+\.\s+/, ''))
+      continue
+    }
+
+    flushList()
+
+    // Empty line
+    if (trimmed === '') {
+      elements.push(<br key={`br-${i}`} />)
+      continue
+    }
+
+    // Heading
+    if (/^###?\s+/.test(trimmed)) {
+      elements.push(<p key={`h-${i}`} className="font-bold mt-2 mb-1">{renderInline(trimmed.replace(/^#+\s+/, ''))}</p>)
+      continue
+    }
+
+    // Normal paragraph
+    elements.push(<p key={`p-${i}`} className="my-0.5">{renderInline(trimmed)}</p>)
+  }
+  flushList()
+
+  return <div className={className}>{elements}</div>
 }
 
 interface Message {
@@ -89,20 +209,108 @@ const TAG_COLORS: Record<QuestionTag, string> = {
   Strategy:    'bg-indigo-100 text-indigo-700',
 }
 
+/** Build monthly trend summaries from Tier 3 data */
+function buildMonthlyContext(ethMonthly: EthRecord[]): string {
+  if (!ethMonthly.length) return ''
+
+  // Get sorted unique monthIds
+  const allMonthIds = [...new Set(ethMonthly.map(r => r.monthId))].sort()
+
+  // Total market by month
+  const totalByMonth: Record<number, number> = {}
+  ethMonthly.forEach(r => {
+    totalByMonth[r.monthId] = (totalByMonth[r.monthId] ?? 0) + r.sales
+  })
+  const totalMonthly = allMonthIds.map(m => `${monthLabel(m)}: ${formatCompactDollar(totalByMonth[m] ?? 0)}`).join(', ')
+
+  // Category monthly trends — top 8 categories by total value
+  const catMonthMap: Record<string, Record<number, number>> = {}
+  ethMonthly.forEach(r => {
+    if (!catMonthMap[r.category]) catMonthMap[r.category] = {}
+    catMonthMap[r.category][r.monthId] = (catMonthMap[r.category][r.monthId] ?? 0) + r.sales
+  })
+  const catTotals = Object.entries(catMonthMap).map(([cat, months]) => ({
+    cat, total: Object.values(months).reduce((s, v) => s + v, 0), months,
+  })).sort((a, b) => b.total - a.total)
+
+  const catTrends = catTotals.slice(0, 8).map(({ cat, months }) => {
+    const trend = allMonthIds.map(m => `${monthLabel(m)}:${formatCompactDollar(months[m] ?? 0)}`).join(', ')
+    return `${cat}: ${trend}`
+  }).join('\n')
+
+  // SKU monthly trends — top 15 SKUs by total value
+  const skuMonthMap: Record<string, { cat: string; mfr: string; mol: string; months: Record<number, number>; total: number }> = {}
+  ethMonthly.forEach(r => {
+    if (!skuMonthMap[r.sku]) skuMonthMap[r.sku] = { cat: r.category, mfr: r.manufacturer, mol: r.molecule, months: {}, total: 0 }
+    const s = skuMonthMap[r.sku]
+    s.months[r.monthId] = (s.months[r.monthId] ?? 0) + r.sales
+    s.total += r.sales
+  })
+  const topSkuTrends = Object.entries(skuMonthMap)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 15)
+    .map(([sku, info]) => {
+      const trend = allMonthIds.map(m => `${monthLabel(m)}:${formatCompactDollar(info.months[m] ?? 0)}`).join(', ')
+      return `${sku} (${info.mfr} | ${info.cat} | ${info.mol}): ${trend}`
+    }).join('\n')
+
+  // Molecule monthly trends — top 10 by total value
+  const molMonthMap: Record<string, Record<number, number>> = {}
+  ethMonthly.forEach(r => {
+    if (!molMonthMap[r.molecule]) molMonthMap[r.molecule] = {}
+    molMonthMap[r.molecule][r.monthId] = (molMonthMap[r.molecule][r.monthId] ?? 0) + r.sales
+  })
+  const molTrends = Object.entries(molMonthMap)
+    .map(([mol, months]) => ({ mol, total: Object.values(months).reduce((s, v) => s + v, 0), months }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+    .map(({ mol, months }) => {
+      const trend = allMonthIds.map(m => `${monthLabel(m)}:${formatCompactDollar(months[m] ?? 0)}`).join(', ')
+      return `${mol}: ${trend}`
+    }).join('\n')
+
+  return `
+
+MONTHLY TIME-SERIES DATA (Rx dispensing by month — use for trend analysis):
+Months available: ${allMonthIds.map(m => monthLabel(m)).join(', ')}
+
+TOTAL RX MARKET BY MONTH:
+${totalMonthly}
+
+TOP 8 RX CATEGORIES — MONTHLY TREND:
+${catTrends}
+
+TOP 15 RX SKUs — MONTHLY TREND:
+${topSkuTrends}
+
+TOP 10 MOLECULES — MONTHLY TREND:
+${molTrends}
+
+IMPORTANT: When users ask about monthly trends, comparisons over time, or "how has X performed month by month" — use this monthly data to provide precise month-by-month figures and generate a LINE chart showing the trend.`
+}
+
 /** Build a data context summary for the AI from live data */
-function buildDataContext(data: ReturnType<typeof useData>): string {
+function buildDataContext(data: ReturnType<typeof useData>, ethMonthly: EthRecord[] | null): string {
   const { ethCategories, otcCategories, ethTotalTY, ethTotalLY, otcTotalTY, otcTotalLY, state } = data
 
   const ethGrowth = ethTotalLY ? ((ethTotalTY - ethTotalLY) / ethTotalLY) * 100 : 0
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
   const totalMarket = ethTotalTY + otcTotalTY
 
+  // Volume totals
+  const ethTotalTYUnits = ethCategories.reduce((s, c) => s + c.tyUnits, 0)
+  const ethTotalLYUnits = ethCategories.reduce((s, c) => s + c.lyUnits, 0)
+  const otcTotalTYUnits = otcCategories.reduce((s, c) => s + c.tyUnits, 0)
+  const otcTotalLYUnits = otcCategories.reduce((s, c) => s + c.lyUnits, 0)
+  const ethUnitGrowth = ethTotalLYUnits ? ((ethTotalTYUnits - ethTotalLYUnits) / ethTotalLYUnits) * 100 : 0
+  const otcUnitGrowth = otcTotalLYUnits ? ((otcTotalTYUnits - otcTotalLYUnits) / otcTotalLYUnits) * 100 : 0
+
   const topRx = ethCategories.slice(0, 10).map(c =>
-    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, ${c.manufacturerCount} manufacturers`
+    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, Vol ${formatCompact(c.tyUnits)} units (${c.unitGrowth >= 0 ? '+' : ''}${c.unitGrowth.toFixed(1)}%), ${c.manufacturerCount} manufacturers`
   ).join('\n')
 
   const topOtc = otcCategories.slice(0, 10).map(c =>
-    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, ${c.manufacturerCount} manufacturers`
+    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, Vol ${formatCompact(c.tyUnits)} units (${c.unitGrowth >= 0 ? '+' : ''}${c.unitGrowth.toFixed(1)}%), ${c.manufacturerCount} manufacturers`
   ).join('\n')
 
   const rxGrowing = [...ethCategories].filter(c => c.lyValue > 10000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
@@ -113,8 +321,9 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   // SKU-level data for Rx — pre-aggregated
   const rxSkus = state.ethSkus.map(r => ({
     sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
-    tyValue: r.tyValue, lyValue: r.lyValue,
+    tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
     growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+    unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
     absChange: r.tyValue - r.lyValue,
   }))
   const topRxSkus = [...rxSkus].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
@@ -125,8 +334,9 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   const topOtcItems = [...state.otc]
     .map(r => ({
       item: r.packName, category: r.market, manufacturer: r.manufacturer,
-      tyValue: r.tyValue, lyValue: r.lyValue,
+      tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
       growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
       absChange: r.tyValue - r.lyValue,
     }))
   const topOtcByValue = [...topOtcItems].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
@@ -134,26 +344,24 @@ function buildDataContext(data: ReturnType<typeof useData>): string {
   const topOtcDecliners = [...topOtcItems].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
 
   // Build manufacturer-level summaries from SKU data
-  const rxMfrMap: Record<string, { tyV: number; lyV: number }> = {}
+  const rxMfrMap: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number }> = {}
   state.ethSkus.forEach(r => {
-    if (!rxMfrMap[r.manufacturer]) rxMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
+    if (!rxMfrMap[r.manufacturer]) rxMfrMap[r.manufacturer] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0 }
     const m = rxMfrMap[r.manufacturer]!
-    m.tyV += r.tyValue
-    m.lyV += r.lyValue
+    m.tyV += r.tyValue; m.lyV += r.lyValue; m.tyU += r.tyUnits; m.lyU += r.lyUnits
   })
   const topRxMfrs = Object.entries(rxMfrMap)
-    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
+    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, tyU: m.tyU, lyU: m.lyU, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0, unitGrowth: m.lyU ? ((m.tyU - m.lyU) / m.lyU) * 100 : 0 }))
     .sort((a, b) => b.tyV - a.tyV).slice(0, 15)
 
-  const otcMfrMap: Record<string, { tyV: number; lyV: number }> = {}
+  const otcMfrMap: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number }> = {}
   state.otc.forEach(r => {
-    if (!otcMfrMap[r.manufacturer]) otcMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
+    if (!otcMfrMap[r.manufacturer]) otcMfrMap[r.manufacturer] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0 }
     const m = otcMfrMap[r.manufacturer]!
-    m.tyV += r.tyValue
-    m.lyV += r.lyValue
+    m.tyV += r.tyValue; m.lyV += r.lyValue; m.tyU += r.tyUnits; m.lyU += r.lyUnits
   })
   const topOtcMfrs = Object.entries(otcMfrMap)
-    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
+    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, tyU: m.tyU, lyU: m.lyU, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0, unitGrowth: m.lyU ? ((m.tyU - m.lyU) / m.lyU) * 100 : 0 }))
     .sort((a, b) => b.tyV - a.tyV).slice(0, 15)
 
   return `You are SOTI Analyst, an AI assistant embedded in NostraData's State of the Industry platform.
@@ -163,10 +371,10 @@ Your job is to answer questions about pharmacy dispensing trends, market share, 
 banner group comparisons, script volumes, and related analytics — clearly and concisely.
 
 MARKET OVERVIEW:
-- Total Pharmacy Market: ${formatCompactDollar(totalMarket)}
-- Prescription (Rx/Dispense): ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)
-- OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)
-- Rx:OTC Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
+- Total Pharmacy Market: ${formatCompactDollar(totalMarket)} value, ${formatCompact(ethTotalTYUnits + otcTotalTYUnits)} units
+- Prescription (Rx/Dispense): ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% value YoY) | ${formatCompact(ethTotalTYUnits)} scripts (${ethUnitGrowth >= 0 ? '+' : ''}${ethUnitGrowth.toFixed(1)}% volume YoY)
+- OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% value YoY) | ${formatCompact(otcTotalTYUnits)} units (${otcUnitGrowth >= 0 ? '+' : ''}${otcUnitGrowth.toFixed(1)}% volume YoY)
+- Rx:OTC Value Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
 - Total Rx SKUs: ${rxSkus.length}
 - Total OTC Items (Pack Names): ${topOtcItems.length}
 - Rx Categories: ${ethCategories.length}
@@ -191,7 +399,7 @@ DECLINING OTC (value at risk):
 ${otcDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
 TOP 25 RX SKUs (finest grain, by value):
-${topRxSkus.map((s, i) => `${i + 1}. ${s.sku} | Mfr: ${s.manufacturer} | Category: ${s.category} | Molecule: ${s.molecule} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`).join('\n')}
+${topRxSkus.map((s, i) => `${i + 1}. ${s.sku} | Mfr: ${s.manufacturer} | Category: ${s.category} | Molecule: ${s.molecule} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'}) | Vol: ${formatCompact(s.tyUnits)} units (${s.unitGrowth < 900 ? (s.unitGrowth >= 0 ? '+' : '') + s.unitGrowth.toFixed(1) + '%' : 'New'})`).join('\n')}
 
 FASTEST GROWING RX SKUs:
 ${topRxSkuGrowers.map(s => `${s.sku} (${s.manufacturer}): +${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | +${formatCompactDollar(s.absChange)}`).join('\n')}
@@ -200,7 +408,7 @@ DECLINING RX SKUs (value at risk):
 ${topRxSkuDecliners.map(s => `${s.sku} (${s.manufacturer}): ${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | ${formatCompactDollar(s.absChange)}`).join('\n')}
 
 TOP 25 OTC ITEMS / PACK NAMES (finest grain, by value):
-${topOtcByValue.map((s, i) => `${i + 1}. ${s.item} | Mfr: ${s.manufacturer} | Category: ${s.category} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`).join('\n')}
+${topOtcByValue.map((s, i) => `${i + 1}. ${s.item} | Mfr: ${s.manufacturer} | Category: ${s.category} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'}) | Vol: ${formatCompact(s.tyUnits)} units (${s.unitGrowth < 900 ? (s.unitGrowth >= 0 ? '+' : '') + s.unitGrowth.toFixed(1) + '%' : 'New'})`).join('\n')}
 
 FASTEST GROWING OTC ITEMS:
 ${topOtcGrowers.map(s => `${s.item} (${s.manufacturer}): +${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | +${formatCompactDollar(s.absChange)}`).join('\n')}
@@ -209,14 +417,21 @@ DECLINING OTC ITEMS (value at risk):
 ${topOtcDecliners.map(s => `${s.item} (${s.manufacturer}): ${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | ${formatCompactDollar(s.absChange)}`).join('\n')}
 
 TOP 15 RX MANUFACTURERS (by value):
-${topRxMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)}, Growth ${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}%`).join('\n')}
+${topRxMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)} (${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}% value), ${formatCompact(m.tyU)} scripts (${m.unitGrowth >= 0 ? '+' : ''}${m.unitGrowth.toFixed(1)}% vol)`).join('\n')}
 
 TOP 15 OTC MANUFACTURERS (by value):
-${topOtcMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)}, Growth ${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}%`).join('\n')}
+${topOtcMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)} (${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}% value), ${formatCompact(m.tyU)} units (${m.unitGrowth >= 0 ? '+' : ''}${m.unitGrowth.toFixed(1)}% vol)`).join('\n')}
 
 DATA HIERARCHY (for drill-down context):
 - Rx: Category → Molecule → Manufacturer → SKU (finest grain)
 - OTC: Category (Market) → Manufacturer → Pack Name / Item (finest grain)
+
+VALUE vs VOLUME ANALYSIS:
+- You have BOTH value ($) and volume (units/scripts) data for all levels
+- When value growth exceeds volume growth → price/mix driven growth (premiumisation)
+- When volume growth exceeds value growth → price erosion or genericisation
+- Highlight value/volume divergences as they reveal pricing dynamics and market shifts
+- Rx units = scripts dispensed; OTC units = packs sold
 
 WHEN TO GENERATE A CHART:
 Automatically generate an inline interactive chart whenever the question involves:
@@ -238,13 +453,20 @@ CHART STYLE GUIDELINES:
 
 CHART VISUALISATIONS (technical format):
 - Use \`\`\`chart code blocks with JSON inside
-- Supported chart types: "bar" and "pie"
+- Supported chart types: "bar", "pie", and "line"
 - Bar chart format: {"type":"bar","title":"Chart Title","data":[{"name":"Label","value":123},...],"labels":["TY Value","LY Value"]}
 - Use "value2" in data items for a second bar series (e.g. LY comparison): {"name":"Cat","value":100,"value2":90}
 - Pie chart format: {"type":"pie","title":"Chart Title","data":[{"name":"Segment","value":123},...]}
+- Line chart format (for trends over time): {"type":"line","title":"Chart Title","data":[{"name":"Jan 24","series1":123,"series2":456},...],"series":["series1","series2"],"labels":["Product A","Product B"]}
+  - "name" = x-axis label (month), each series key = a data line
+  - "series" = array of data keys to plot as lines
+  - "labels" = display names for each series (same order as series)
+  - For single-series trends, use: {"type":"line","title":"...","data":[{"name":"Jan 24","value":123},...],"series":["value"],"labels":["Sales"]}
 - Use raw numbers (not formatted strings) for values — e.g. 20400000 not "$20.4M"
 - Place charts AFTER the relevant text paragraph, not at the very end
 - Charts should add visual insight — don't just repeat what the text says
+- ALWAYS use line charts for month-over-month trends, time-series comparisons, and product trajectory analysis
+- Use bar charts for rankings/comparisons at a point in time, pie charts for market share composition
 
 RESPONSE FORMAT:
 1. Lead with a 1–2 sentence direct answer to the question
@@ -264,7 +486,9 @@ INSTRUCTIONS:
 - Use competitive intelligence language — market share, portfolio optimisation, channel dynamics
 - If you don't have data for a specific product, say so honestly — never fabricate figures
 - Format with clear structure (bullets, bold for key figures)
-- Position insights as commercially valuable — this is intelligence worth paying for`
+- Position insights as commercially valuable — this is intelligence worth paying for
+- You have MONTHLY TIME-SERIES DATA available — always use it when users ask about trends, trajectories, month-by-month performance, or comparisons over time
+- When showing monthly trends, ALWAYS use a line chart (type: "line") with the monthly data points${ethMonthly ? buildMonthlyContext(ethMonthly) : '\n\nNOTE: Monthly time-series data is currently loading. If the user asks about monthly trends, let them know the data is being prepared.'}`
 }
 
 /** POC demo key — char codes decoded at runtime (bypasses push protection scanners) */
@@ -292,8 +516,8 @@ async function callClaude(messages: { role: string; content: string }[], systemP
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
       system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     }),
@@ -409,6 +633,7 @@ function fallbackAnswer(question: string, data: ReturnType<typeof useData>): str
 
 export function AskPage() {
   const data = useData()
+  const { loadMonthlyData, state } = data
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -417,6 +642,11 @@ export function AskPage() {
   const [showKeyInput, setShowKeyInput] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const hasApiKey = !!apiKey
+
+  // Load monthly (Tier 3) data on mount for trend analysis
+  useEffect(() => {
+    loadMonthlyData()
+  }, [loadMonthlyData])
 
   const saveApiKey = (key: string) => {
     const trimmed = key.trim()
@@ -434,7 +664,7 @@ export function AskPage() {
     setShowKeyInput(false)
   }
 
-  const systemPrompt = useMemo(() => buildDataContext(data), [data])
+  const systemPrompt = useMemo(() => buildDataContext(data, state.ethMonthly), [data, state.ethMonthly])
 
   /** Dynamic, data-driven questions targeting category & SKU level */
   const suggestedQuestions = useMemo(() => {
@@ -515,7 +745,7 @@ export function AskPage() {
           <div>
             <h1 className="text-lg font-bold text-slate-900">SOTI AI <span className="text-xs font-medium text-slate-400">State of the Industry</span></h1>
             <p className="text-[10px] text-slate-400">
-              {hasApiKey ? 'Powered by Claude' : 'Rule-based responses'} &middot; {formatCompact(data.state.ethSkus.length + data.state.otc.length)} data points
+              {hasApiKey ? 'Powered by Claude' : 'Rule-based responses'} &middot; {formatCompact(data.state.ethSkus.length + data.state.otc.length + (data.state.ethMonthly?.length ?? 0))} data points{data.state.ethMonthly ? ' incl. monthly' : ''}
             </p>
           </div>
         </div>
@@ -617,11 +847,15 @@ export function AskPage() {
                   ? 'bg-red-50 border border-red-200'
                   : 'bg-white border border-slate-200'
               }`}>
-                <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
-                  msg.role === 'user' ? 'text-white' : msg.role === 'system' ? 'text-red-700' : 'text-slate-700'
-                }`}>
-                  {displayText}
-                </p>
+                {msg.role === 'assistant' ? (
+                  <MarkdownText text={displayText} className="text-xs sm:text-sm leading-relaxed text-slate-700" />
+                ) : (
+                  <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
+                    msg.role === 'user' ? 'text-white' : 'text-red-700'
+                  }`}>
+                    {displayText}
+                  </p>
+                )}
                 {charts.map((spec, ci) => (
                   <InlineChart key={ci} spec={spec} />
                 ))}
