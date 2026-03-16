@@ -116,6 +116,80 @@ function InlineChart({ spec }: { spec: ChartSpec }) {
   )
 }
 
+/** Lightweight markdown renderer for AI responses */
+function MarkdownText({ text, className }: { text: string; className?: string }) {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let listItems: string[] = []
+  let listKey = 0
+
+  function flushList() {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={`list-${listKey++}`} className="list-disc list-inside space-y-0.5 my-1">
+          {listItems.map((item, j) => <li key={j}>{renderInline(item)}</li>)}
+        </ul>
+      )
+      listItems = []
+    }
+  }
+
+  function renderInline(s: string): React.ReactNode {
+    // Bold **text** and bullet cleanup
+    const parts: React.ReactNode[] = []
+    let remaining = s
+    let k = 0
+    while (remaining.length > 0) {
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
+      if (boldMatch && boldMatch.index !== undefined) {
+        if (boldMatch.index > 0) parts.push(remaining.slice(0, boldMatch.index))
+        parts.push(<strong key={k++} className="font-semibold">{boldMatch[1]}</strong>)
+        remaining = remaining.slice(boldMatch.index + boldMatch[0].length)
+      } else {
+        parts.push(remaining)
+        break
+      }
+    }
+    return parts.length === 1 ? parts[0] : <>{parts}</>
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    // Bullet list items
+    if (/^[-•]\s+/.test(trimmed)) {
+      listItems.push(trimmed.replace(/^[-•]\s+/, ''))
+      continue
+    }
+    // Numbered list items
+    if (/^\d+\.\s+/.test(trimmed)) {
+      listItems.push(trimmed.replace(/^\d+\.\s+/, ''))
+      continue
+    }
+
+    flushList()
+
+    // Empty line
+    if (trimmed === '') {
+      elements.push(<br key={`br-${i}`} />)
+      continue
+    }
+
+    // Heading
+    if (/^###?\s+/.test(trimmed)) {
+      elements.push(<p key={`h-${i}`} className="font-bold mt-2 mb-1">{renderInline(trimmed.replace(/^#+\s+/, ''))}</p>)
+      continue
+    }
+
+    // Normal paragraph
+    elements.push(<p key={`p-${i}`} className="my-0.5">{renderInline(trimmed)}</p>)
+  }
+  flushList()
+
+  return <div className={className}>{elements}</div>
+}
+
 interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
@@ -223,12 +297,20 @@ function buildDataContext(data: ReturnType<typeof useData>, ethMonthly: EthRecor
   const otcGrowth = otcTotalLY ? ((otcTotalTY - otcTotalLY) / otcTotalLY) * 100 : 0
   const totalMarket = ethTotalTY + otcTotalTY
 
+  // Volume totals
+  const ethTotalTYUnits = ethCategories.reduce((s, c) => s + c.tyUnits, 0)
+  const ethTotalLYUnits = ethCategories.reduce((s, c) => s + c.lyUnits, 0)
+  const otcTotalTYUnits = otcCategories.reduce((s, c) => s + c.tyUnits, 0)
+  const otcTotalLYUnits = otcCategories.reduce((s, c) => s + c.lyUnits, 0)
+  const ethUnitGrowth = ethTotalLYUnits ? ((ethTotalTYUnits - ethTotalLYUnits) / ethTotalLYUnits) * 100 : 0
+  const otcUnitGrowth = otcTotalLYUnits ? ((otcTotalTYUnits - otcTotalLYUnits) / otcTotalLYUnits) * 100 : 0
+
   const topRx = ethCategories.slice(0, 10).map(c =>
-    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, ${c.manufacturerCount} manufacturers`
+    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, Vol ${formatCompact(c.tyUnits)} units (${c.unitGrowth >= 0 ? '+' : ''}${c.unitGrowth.toFixed(1)}%), ${c.manufacturerCount} manufacturers`
   ).join('\n')
 
   const topOtc = otcCategories.slice(0, 10).map(c =>
-    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, ${c.manufacturerCount} manufacturers`
+    `${c.category}: TY ${formatCurrency(c.tyValue)}, Growth ${c.valueGrowth >= 0 ? '+' : ''}${c.valueGrowth.toFixed(1)}%, Vol ${formatCompact(c.tyUnits)} units (${c.unitGrowth >= 0 ? '+' : ''}${c.unitGrowth.toFixed(1)}%), ${c.manufacturerCount} manufacturers`
   ).join('\n')
 
   const rxGrowing = [...ethCategories].filter(c => c.lyValue > 10000).sort((a, b) => b.valueGrowth - a.valueGrowth).slice(0, 5)
@@ -239,8 +321,9 @@ function buildDataContext(data: ReturnType<typeof useData>, ethMonthly: EthRecor
   // SKU-level data for Rx — pre-aggregated
   const rxSkus = state.ethSkus.map(r => ({
     sku: r.sku, category: r.category, manufacturer: r.manufacturer, molecule: r.molecule,
-    tyValue: r.tyValue, lyValue: r.lyValue,
+    tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
     growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+    unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
     absChange: r.tyValue - r.lyValue,
   }))
   const topRxSkus = [...rxSkus].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
@@ -251,8 +334,9 @@ function buildDataContext(data: ReturnType<typeof useData>, ethMonthly: EthRecor
   const topOtcItems = [...state.otc]
     .map(r => ({
       item: r.packName, category: r.market, manufacturer: r.manufacturer,
-      tyValue: r.tyValue, lyValue: r.lyValue,
+      tyValue: r.tyValue, lyValue: r.lyValue, tyUnits: r.tyUnits, lyUnits: r.lyUnits,
       growth: r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999,
+      unitGrowth: r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999,
       absChange: r.tyValue - r.lyValue,
     }))
   const topOtcByValue = [...topOtcItems].sort((a, b) => b.tyValue - a.tyValue).slice(0, 25)
@@ -260,26 +344,24 @@ function buildDataContext(data: ReturnType<typeof useData>, ethMonthly: EthRecor
   const topOtcDecliners = [...topOtcItems].filter(s => s.lyValue > 1000 && s.growth < 900).sort((a, b) => a.absChange - b.absChange).slice(0, 15)
 
   // Build manufacturer-level summaries from SKU data
-  const rxMfrMap: Record<string, { tyV: number; lyV: number }> = {}
+  const rxMfrMap: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number }> = {}
   state.ethSkus.forEach(r => {
-    if (!rxMfrMap[r.manufacturer]) rxMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
+    if (!rxMfrMap[r.manufacturer]) rxMfrMap[r.manufacturer] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0 }
     const m = rxMfrMap[r.manufacturer]!
-    m.tyV += r.tyValue
-    m.lyV += r.lyValue
+    m.tyV += r.tyValue; m.lyV += r.lyValue; m.tyU += r.tyUnits; m.lyU += r.lyUnits
   })
   const topRxMfrs = Object.entries(rxMfrMap)
-    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
+    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, tyU: m.tyU, lyU: m.lyU, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0, unitGrowth: m.lyU ? ((m.tyU - m.lyU) / m.lyU) * 100 : 0 }))
     .sort((a, b) => b.tyV - a.tyV).slice(0, 15)
 
-  const otcMfrMap: Record<string, { tyV: number; lyV: number }> = {}
+  const otcMfrMap: Record<string, { tyV: number; lyV: number; tyU: number; lyU: number }> = {}
   state.otc.forEach(r => {
-    if (!otcMfrMap[r.manufacturer]) otcMfrMap[r.manufacturer] = { tyV: 0, lyV: 0 }
+    if (!otcMfrMap[r.manufacturer]) otcMfrMap[r.manufacturer] = { tyV: 0, lyV: 0, tyU: 0, lyU: 0 }
     const m = otcMfrMap[r.manufacturer]!
-    m.tyV += r.tyValue
-    m.lyV += r.lyValue
+    m.tyV += r.tyValue; m.lyV += r.lyValue; m.tyU += r.tyUnits; m.lyU += r.lyUnits
   })
   const topOtcMfrs = Object.entries(otcMfrMap)
-    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0 }))
+    .map(([mfr, m]) => ({ mfr, tyV: m.tyV, lyV: m.lyV, tyU: m.tyU, lyU: m.lyU, growth: m.lyV ? ((m.tyV - m.lyV) / m.lyV) * 100 : 0, unitGrowth: m.lyU ? ((m.tyU - m.lyU) / m.lyU) * 100 : 0 }))
     .sort((a, b) => b.tyV - a.tyV).slice(0, 15)
 
   return `You are SOTI Analyst, an AI assistant embedded in NostraData's State of the Industry platform.
@@ -289,10 +371,10 @@ Your job is to answer questions about pharmacy dispensing trends, market share, 
 banner group comparisons, script volumes, and related analytics — clearly and concisely.
 
 MARKET OVERVIEW:
-- Total Pharmacy Market: ${formatCompactDollar(totalMarket)}
-- Prescription (Rx/Dispense): ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% YoY)
-- OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% YoY)
-- Rx:OTC Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
+- Total Pharmacy Market: ${formatCompactDollar(totalMarket)} value, ${formatCompact(ethTotalTYUnits + otcTotalTYUnits)} units
+- Prescription (Rx/Dispense): ${formatCompactDollar(ethTotalTY)} (${ethGrowth >= 0 ? '+' : ''}${ethGrowth.toFixed(1)}% value YoY) | ${formatCompact(ethTotalTYUnits)} scripts (${ethUnitGrowth >= 0 ? '+' : ''}${ethUnitGrowth.toFixed(1)}% volume YoY)
+- OTC/Front of Shop: ${formatCompactDollar(otcTotalTY)} (${otcGrowth >= 0 ? '+' : ''}${otcGrowth.toFixed(1)}% value YoY) | ${formatCompact(otcTotalTYUnits)} units (${otcUnitGrowth >= 0 ? '+' : ''}${otcUnitGrowth.toFixed(1)}% volume YoY)
+- Rx:OTC Value Split: ${((ethTotalTY / totalMarket) * 100).toFixed(0)}:${((otcTotalTY / totalMarket) * 100).toFixed(0)}
 - Total Rx SKUs: ${rxSkus.length}
 - Total OTC Items (Pack Names): ${topOtcItems.length}
 - Rx Categories: ${ethCategories.length}
@@ -317,7 +399,7 @@ DECLINING OTC (value at risk):
 ${otcDeclining.map(c => `${c.category}: ${c.valueGrowth.toFixed(1)}% (${formatCompactDollar(c.tyValue)})`).join(', ')}
 
 TOP 25 RX SKUs (finest grain, by value):
-${topRxSkus.map((s, i) => `${i + 1}. ${s.sku} | Mfr: ${s.manufacturer} | Category: ${s.category} | Molecule: ${s.molecule} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`).join('\n')}
+${topRxSkus.map((s, i) => `${i + 1}. ${s.sku} | Mfr: ${s.manufacturer} | Category: ${s.category} | Molecule: ${s.molecule} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'}) | Vol: ${formatCompact(s.tyUnits)} units (${s.unitGrowth < 900 ? (s.unitGrowth >= 0 ? '+' : '') + s.unitGrowth.toFixed(1) + '%' : 'New'})`).join('\n')}
 
 FASTEST GROWING RX SKUs:
 ${topRxSkuGrowers.map(s => `${s.sku} (${s.manufacturer}): +${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | +${formatCompactDollar(s.absChange)}`).join('\n')}
@@ -326,7 +408,7 @@ DECLINING RX SKUs (value at risk):
 ${topRxSkuDecliners.map(s => `${s.sku} (${s.manufacturer}): ${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | ${formatCompactDollar(s.absChange)}`).join('\n')}
 
 TOP 25 OTC ITEMS / PACK NAMES (finest grain, by value):
-${topOtcByValue.map((s, i) => `${i + 1}. ${s.item} | Mfr: ${s.manufacturer} | Category: ${s.category} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'})`).join('\n')}
+${topOtcByValue.map((s, i) => `${i + 1}. ${s.item} | Mfr: ${s.manufacturer} | Category: ${s.category} | TY: ${formatCompactDollar(s.tyValue)} | LY: ${formatCompactDollar(s.lyValue)} | Change: ${s.absChange >= 0 ? '+' : ''}${formatCompactDollar(s.absChange)} (${s.growth < 900 ? (s.growth >= 0 ? '+' : '') + s.growth.toFixed(1) + '%' : 'New'}) | Vol: ${formatCompact(s.tyUnits)} units (${s.unitGrowth < 900 ? (s.unitGrowth >= 0 ? '+' : '') + s.unitGrowth.toFixed(1) + '%' : 'New'})`).join('\n')}
 
 FASTEST GROWING OTC ITEMS:
 ${topOtcGrowers.map(s => `${s.item} (${s.manufacturer}): +${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | +${formatCompactDollar(s.absChange)}`).join('\n')}
@@ -335,14 +417,21 @@ DECLINING OTC ITEMS (value at risk):
 ${topOtcDecliners.map(s => `${s.item} (${s.manufacturer}): ${s.growth.toFixed(1)}% | ${formatCompactDollar(s.tyValue)} | ${formatCompactDollar(s.absChange)}`).join('\n')}
 
 TOP 15 RX MANUFACTURERS (by value):
-${topRxMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)}, Growth ${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}%`).join('\n')}
+${topRxMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)} (${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}% value), ${formatCompact(m.tyU)} scripts (${m.unitGrowth >= 0 ? '+' : ''}${m.unitGrowth.toFixed(1)}% vol)`).join('\n')}
 
 TOP 15 OTC MANUFACTURERS (by value):
-${topOtcMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)}, Growth ${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}%`).join('\n')}
+${topOtcMfrs.map((m, i) => `${i + 1}. ${m.mfr}: TY ${formatCompactDollar(m.tyV)} (${m.growth >= 0 ? '+' : ''}${m.growth.toFixed(1)}% value), ${formatCompact(m.tyU)} units (${m.unitGrowth >= 0 ? '+' : ''}${m.unitGrowth.toFixed(1)}% vol)`).join('\n')}
 
 DATA HIERARCHY (for drill-down context):
 - Rx: Category → Molecule → Manufacturer → SKU (finest grain)
 - OTC: Category (Market) → Manufacturer → Pack Name / Item (finest grain)
+
+VALUE vs VOLUME ANALYSIS:
+- You have BOTH value ($) and volume (units/scripts) data for all levels
+- When value growth exceeds volume growth → price/mix driven growth (premiumisation)
+- When volume growth exceeds value growth → price erosion or genericisation
+- Highlight value/volume divergences as they reveal pricing dynamics and market shifts
+- Rx units = scripts dispensed; OTC units = packs sold
 
 WHEN TO GENERATE A CHART:
 Automatically generate an inline interactive chart whenever the question involves:
@@ -427,7 +516,7 @@ async function callClaude(messages: { role: string; content: string }[], systemP
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
@@ -758,11 +847,15 @@ export function AskPage() {
                   ? 'bg-red-50 border border-red-200'
                   : 'bg-white border border-slate-200'
               }`}>
-                <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
-                  msg.role === 'user' ? 'text-white' : msg.role === 'system' ? 'text-red-700' : 'text-slate-700'
-                }`}>
-                  {displayText}
-                </p>
+                {msg.role === 'assistant' ? (
+                  <MarkdownText text={displayText} className="text-xs sm:text-sm leading-relaxed text-slate-700" />
+                ) : (
+                  <p className={`text-xs sm:text-sm leading-relaxed whitespace-pre-line ${
+                    msg.role === 'user' ? 'text-white' : 'text-red-700'
+                  }`}>
+                    {displayText}
+                  </p>
+                )}
                 {charts.map((spec, ci) => (
                   <InlineChart key={ci} spec={spec} />
                 ))}
