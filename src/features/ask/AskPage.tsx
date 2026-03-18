@@ -666,7 +666,73 @@ export function AskPage() {
     setShowKeyInput(false)
   }
 
-  const systemPrompt = useMemo(() => buildDataContext(data, state.ethMonthly), [data, state.ethMonthly])
+  const baseSystemPrompt = useMemo(() => buildDataContext(data, state.ethMonthly), [data, state.ethMonthly])
+
+  /** Dynamically search all data for items matching the user's query, returning extra context */
+  const buildQueryContext = useCallback((query: string): string => {
+    const q = query.toLowerCase()
+    // Extract meaningful search tokens (skip very short/common words)
+    const tokens = q.split(/\s+/).filter(t => t.length >= 3 && !['the', 'and', 'for', 'how', 'has', 'what', 'which', 'can', 'you', 'show', 'tell', 'about', 'with', 'from', 'that', 'this', 'are', 'was', 'been', 'being', 'have', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'shall', 'performing', 'performed', 'performance', 'trend', 'trends', 'month', 'monthly', 'compare', 'versus', 'between'].includes(t))
+    if (tokens.length === 0) return ''
+
+    // Search Rx SKUs
+    const matchingRxSkus = state.ethSkus.filter(r => {
+      const searchable = `${r.sku} ${r.category} ${r.manufacturer} ${r.molecule}`.toLowerCase()
+      return tokens.some(t => searchable.includes(t))
+    }).sort((a, b) => b.tyValue - a.tyValue).slice(0, 30)
+
+    // Search OTC items
+    const matchingOtcItems = state.otc.filter(r => {
+      const searchable = `${r.packName} ${r.market} ${r.manufacturer}`.toLowerCase()
+      return tokens.some(t => searchable.includes(t))
+    }).sort((a, b) => b.tyValue - a.tyValue).slice(0, 30)
+
+    // Search monthly data for matched SKUs
+    let monthlyContext = ''
+    if (state.ethMonthly && matchingRxSkus.length > 0) {
+      const matchedNames = new Set(matchingRxSkus.slice(0, 15).map(r => r.sku.toUpperCase()))
+      const allMonthIds = [...new Set(state.ethMonthly.map(r => r.monthId))].sort()
+      const skuMonths: Record<string, Record<number, number>> = {}
+      for (const rec of state.ethMonthly) {
+        if (matchedNames.has(rec.sku.toUpperCase())) {
+          if (!skuMonths[rec.sku]) skuMonths[rec.sku] = {}
+          const sm = skuMonths[rec.sku]!
+          sm[rec.monthId] = (sm[rec.monthId] ?? 0) + rec.sales
+        }
+      }
+      if (Object.keys(skuMonths).length > 0) {
+        monthlyContext = '\n\nMONTHLY TRENDS FOR MATCHED Rx SKUs:\n' +
+          Object.entries(skuMonths).map(([sku, months]) => {
+            const trend = allMonthIds.map(m => `${monthLabel(m)}:${formatCompactDollar(months[m] ?? 0)}`).join(', ')
+            return `${sku}: ${trend}`
+          }).join('\n')
+      }
+    }
+
+    if (matchingRxSkus.length === 0 && matchingOtcItems.length === 0) return ''
+
+    let extra = '\n\nQUERY-MATCHED DATA (items matching the user\'s question):\n'
+    if (matchingRxSkus.length > 0) {
+      extra += `\nMATCHED Rx SKUs (${matchingRxSkus.length} results):\n`
+      extra += matchingRxSkus.map((r, i) => {
+        const growth = r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999
+        const unitGrowth = r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999
+        const absChange = r.tyValue - r.lyValue
+        return `${i + 1}. ${r.sku} | Mfr: ${r.manufacturer} | Category: ${r.category} | Molecule: ${r.molecule} | TY: ${formatCompactDollar(r.tyValue)} | LY: ${formatCompactDollar(r.lyValue)} | Change: ${absChange >= 0 ? '+' : ''}${formatCompactDollar(absChange)} (${growth < 900 ? (growth >= 0 ? '+' : '') + growth.toFixed(1) + '%' : 'New'}) | Vol: ${formatCompact(r.tyUnits)} units (${unitGrowth < 900 ? (unitGrowth >= 0 ? '+' : '') + unitGrowth.toFixed(1) + '%' : 'New'})`
+      }).join('\n')
+    }
+    if (matchingOtcItems.length > 0) {
+      extra += `\nMATCHED OTC ITEMS (${matchingOtcItems.length} results):\n`
+      extra += matchingOtcItems.map((r, i) => {
+        const growth = r.lyValue ? ((r.tyValue - r.lyValue) / r.lyValue) * 100 : 999
+        const unitGrowth = r.lyUnits ? ((r.tyUnits - r.lyUnits) / r.lyUnits) * 100 : 999
+        const absChange = r.tyValue - r.lyValue
+        return `${i + 1}. ${r.packName} | Mfr: ${r.manufacturer} | Category: ${r.market} | TY: ${formatCompactDollar(r.tyValue)} | LY: ${formatCompactDollar(r.lyValue)} | Change: ${absChange >= 0 ? '+' : ''}${formatCompactDollar(absChange)} (${growth < 900 ? (growth >= 0 ? '+' : '') + growth.toFixed(1) + '%' : 'New'}) | Vol: ${formatCompact(r.tyUnits)} units (${unitGrowth < 900 ? (unitGrowth >= 0 ? '+' : '') + unitGrowth.toFixed(1) + '%' : 'New'})`
+      }).join('\n')
+    }
+    extra += monthlyContext
+    return extra
+  }, [state.ethSkus, state.otc, state.ethMonthly])
 
   /** Dynamic, data-driven questions targeting category & SKU level */
   const suggestedQuestions = useMemo(() => {
@@ -678,6 +744,7 @@ export function AskPage() {
     const atRiskOtc = [...otcCategories].filter(c => c.lyValue > 50000).sort((a, b) => a.valueGrowth - b.valueGrowth)[0]
 
     return [
+      { q: `Can you show me Mounjaro versus Ozempic by month?`, tag: 'SKU' as QuestionTag },
       { q: `Which SKUs are driving growth in ${topRx?.category ?? 'the top Rx category'}?`, tag: 'SKU' as QuestionTag },
       { q: `What is the manufacturer share breakdown for ${topOtc?.category ?? 'the leading OTC segment'}?`, tag: 'Supplier' as QuestionTag },
       { q: `Why is ${fastGrower?.category ?? 'this category'} growing ${fastGrower ? `+${fastGrower.valueGrowth.toFixed(1)}%` : 'so fast'} — what's the commercial opportunity?`, tag: 'Opportunity' as QuestionTag },
@@ -685,7 +752,6 @@ export function AskPage() {
       { q: `What molecules are driving Rx value in ${secondRx?.category ?? 'key therapy areas'}?`, tag: 'Molecule' as QuestionTag },
       { q: `What is the promotional ROI risk in ${atRiskOtc?.category ?? 'declining OTC segments'}?`, tag: 'Risk' as QuestionTag },
       { q: `Which Rx categories have the highest supplier concentration?`, tag: 'Category' as QuestionTag },
-      { q: `What category-level trade investment opportunities exist for FY25?`, tag: 'Strategy' as QuestionTag },
     ]
   }, [data])
 
@@ -707,7 +773,8 @@ export function AskPage() {
         const chatHistory = [...messages, userMsg]
           .filter(m => m.role !== 'system')
           .map(m => ({ role: m.role, content: m.content }))
-        response = await callClaude(chatHistory, systemPrompt)
+        const queryExtra = buildQueryContext(userMsg.content)
+        response = await callClaude(chatHistory, baseSystemPrompt + queryExtra)
       } else {
         // Simulate brief delay for UX
         await new Promise(r => setTimeout(r, 500))
