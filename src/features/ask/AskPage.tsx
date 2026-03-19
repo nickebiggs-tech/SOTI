@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import {
   BarChart, Bar, PieChart, Pie, Cell,
   LineChart, Line, Legend,
