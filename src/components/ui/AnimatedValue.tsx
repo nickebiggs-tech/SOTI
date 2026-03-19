@@ -33,7 +33,7 @@ export function useCountUp(
   }, [])
 
   useEffect(() => {
-    if (target === prevTarget.current && display !== '0') return
+    if (target === prevTarget.current) return
     prevTarget.current = target
 
     // Parse the target string to extract numeric value
@@ -63,7 +63,8 @@ export function useCountUp(
       clearTimeout(timer)
       cancelAnimationFrame(rafRef.current)
     }
-  }, [target, duration, delay, animate, display])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration, delay, animate])
 
   return display
 }

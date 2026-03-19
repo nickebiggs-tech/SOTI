@@ -181,7 +181,10 @@ export function SearchPage() {
 
     // Second pass: merge sub-brands sharing the same root word.
     // e.g. "CARROTEN INTENSIVE", "CARROTEN GOLD", "CARROTEN SUMMER" → "CARROTEN"
-    // Only merge when 2+ groups share the same first word.
+    // Only merge when:
+    //  1. The root word itself exists as a standalone brand group (proving it IS the brand name)
+    //  2. There are 2+ groups sharing that root word
+    // This prevents false merges like "BANANA BOAT" + "BANANA REPUBLIC" → "BANANA"
     const rootMap = new Map<string, string[]>()
     for (const brand of groups.keys()) {
       const root = brand.split(' ')[0] || brand
@@ -191,6 +194,8 @@ export function SearchPage() {
     }
     for (const [root, brands] of rootMap) {
       if (brands.length < 2) continue
+      // Only merge if the root word exists as a standalone group
+      if (!brands.includes(root)) continue
       // Merge all sub-brands into the root brand
       const merged: SearchItem[] = []
       for (const b of brands) {
