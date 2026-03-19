@@ -178,6 +178,31 @@ export function SearchPage() {
         groups.set(brand, { items: [item], brand })
       }
     }
+
+    // Second pass: merge sub-brands sharing the same root word.
+    // e.g. "CARROTEN INTENSIVE", "CARROTEN GOLD", "CARROTEN SUMMER" → "CARROTEN"
+    // Only merge when 2+ groups share the same first word.
+    const rootMap = new Map<string, string[]>()
+    for (const brand of groups.keys()) {
+      const root = brand.split(' ')[0] || brand
+      const list = rootMap.get(root)
+      if (list) list.push(brand)
+      else rootMap.set(root, [brand])
+    }
+    for (const [root, brands] of rootMap) {
+      if (brands.length < 2) continue
+      // Merge all sub-brands into the root brand
+      const merged: SearchItem[] = []
+      for (const b of brands) {
+        const grp = groups.get(b)
+        if (grp) {
+          merged.push(...grp.items)
+          groups.delete(b)
+        }
+      }
+      groups.set(root, { items: merged, brand: root })
+    }
+
     return Array.from(groups.values()).map(({ items, brand }) => {
       const tyValue = items.reduce((s, i) => s + i.tyValue, 0)
       const lyValue = items.reduce((s, i) => s + i.lyValue, 0)
@@ -198,7 +223,7 @@ export function SearchPage() {
         skuNames: items.map(i => i.name),
       }
     })
-  }, [allItems, groupByBrand])
+  }, [allItems, groupByBrand, market])
 
   // Filtered + sorted results
   const results = useMemo(() => {
