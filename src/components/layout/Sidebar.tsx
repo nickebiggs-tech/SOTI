@@ -88,14 +88,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           </div>
         ) : (
           <div className="flex-1 overflow-hidden">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[17px] font-extrabold text-white tracking-tight">SOTI</span>
+            <div className="flex items-center gap-1.5">
+              <span className="smark text-[17px]" style={{ fontFamily: 'var(--display, inherit)', fontWeight: 800, letterSpacing: '.01em', color: 'var(--text, white)' }}>SOTI</span>
+              <span className="ping" />
             </div>
             <div className="mt-0.5">
-              <span className="text-[9px] text-white/50 font-semibold uppercase tracking-widest">State of the Industry</span>
+              <span className="text-[9px] text-white/50 font-semibold uppercase" style={{ fontFamily: 'var(--mono, inherit)', letterSpacing: '.12em' }}>State of the Industry</span>
             </div>
             <div className="mt-1">
-              <span className="text-[8px] text-white/40 font-medium">Powered by <span className="font-bold text-white/60">NostraData</span></span>
+              <span className="text-[8px] text-white/40 font-medium">Powered by <span className="font-bold text-white/60">{livery.poweredBy}</span></span>
             </div>
           </div>
         )}

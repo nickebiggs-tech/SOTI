@@ -8,6 +8,7 @@ import { Bot, Send, Sparkles, AlertCircle, User, Loader2, Database, Key, X, Chec
 import { useData } from '../../data/DataProvider'
 import type { EthRecord } from '../../data/types'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
+import { getChartColors, getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 function monthLabel(monthId: number): string {
@@ -16,7 +17,7 @@ function monthLabel(monthId: number): string {
   return `${MONTH_NAMES[m - 1]} ${y.slice(2)}`
 }
 
-const CHART_COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+const CHART_COLORS = getChartColors()
 
 interface ChartSpec {
   type: 'bar' | 'pie' | 'line'
@@ -55,7 +56,7 @@ function InlineChart({ spec }: { spec: ChartSpec }) {
             <Pie data={spec.data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={45} paddingAngle={3} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}>
               {spec.data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
             </Pie>
-            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={getTooltipStyle()} />
             <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
           </PieChart>
         </ResponsiveContainer>
@@ -74,10 +75,10 @@ function InlineChart({ spec }: { spec: ChartSpec }) {
         <p className="text-xs font-semibold text-slate-700 mb-3">{spec.title}</p>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={spec.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" tickLine={false} />
-            <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} tickLine={false} />
-            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke={getAxisColor()} tickLine={false} />
+            <YAxis tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => formatCompact(v)} tickLine={false} />
+            <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={getTooltipStyle()} />
             <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
             {seriesKeys.map((key, i) => (
               <Line
@@ -103,10 +104,10 @@ function InlineChart({ spec }: { spec: ChartSpec }) {
       <p className="text-xs font-semibold text-slate-700 mb-3">{spec.title}</p>
       <ResponsiveContainer width="100%" height={240}>
         <BarChart data={spec.data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={0} angle={-20} textAnchor="end" height={50} tickLine={false} />
-          <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} tickLine={false} />
-          <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+          <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke={getAxisColor()} interval={0} angle={-20} textAnchor="end" height={50} tickLine={false} />
+          <YAxis tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => formatCompact(v)} tickLine={false} />
+          <Tooltip formatter={(v) => formatCompactDollar(Number(v))} contentStyle={getTooltipStyle()} />
           <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
           <Bar dataKey="value" name={label1} fill="#2563EB" radius={[4, 4, 0, 0]} />
           {label2 && <Bar dataKey="value2" name={label2} fill="#94a3b8" radius={[4, 4, 0, 0]} />}

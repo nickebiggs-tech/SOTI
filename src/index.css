@@ -1,7 +1,15 @@
 @import "tailwindcss";
 
+/* SOTI brand kit */
+@import "./styles/soti/soti-fonts.css";
+@import "./styles/soti/soti-theme.css";
+@import "./styles/soti/soti-components.css";
+@import "./styles/soti/soti-overrides.css";
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Switzer', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --color-primary: var(--theme-primary, #2563EB);
   --color-primary-light: var(--theme-primary-light, #3B82F6);

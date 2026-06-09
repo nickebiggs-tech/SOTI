@@ -1,0 +1,341 @@
+/* =========================================================================
+   SOTI OVERRIDES — remap hardcoded Tailwind utility classes to SOTI tokens.
+   This layer catches bg-white, bg-slate-*, text-slate-*, border-slate-*
+   and other hardcoded colors, converting them to the dark terminal palette
+   when [data-theme="soti"] is active.
+   ========================================================================= */
+
+/* ---- Backgrounds ---- */
+[data-theme="soti"] .bg-white          { background-color: var(--panel) !important; }
+[data-theme="soti"] .bg-slate-50       { background-color: var(--void) !important; }
+[data-theme="soti"] .bg-slate-100      { background-color: var(--panel-2) !important; }
+[data-theme="soti"] .bg-slate-200      { background-color: var(--panel-3) !important; }
+
+/* Semantic tint backgrounds → faint token-based fills */
+[data-theme="soti"] .bg-emerald-50     { background-color: color-mix(in srgb, var(--echo) 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-emerald-100    { background-color: color-mix(in srgb, var(--echo) 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-red-50         { background-color: color-mix(in srgb, var(--warm) 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-red-100        { background-color: color-mix(in srgb, var(--warm) 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-blue-50        { background-color: color-mix(in srgb, var(--signal) 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-blue-100       { background-color: color-mix(in srgb, var(--signal) 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-teal-50        { background-color: color-mix(in srgb, var(--echo) 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-teal-100       { background-color: color-mix(in srgb, var(--echo) 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-violet-50      { background-color: color-mix(in srgb, #A78BFA 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-violet-100     { background-color: color-mix(in srgb, #A78BFA 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-amber-50       { background-color: color-mix(in srgb, var(--warm) 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-amber-100      { background-color: color-mix(in srgb, var(--warm) 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-pink-50        { background-color: color-mix(in srgb, var(--warm) 8%, var(--panel)) !important; }
+[data-theme="soti"] .bg-pink-100       { background-color: color-mix(in srgb, var(--warm) 12%, var(--panel)) !important; }
+[data-theme="soti"] .bg-indigo-100     { background-color: color-mix(in srgb, var(--signal) 12%, var(--panel)) !important; }
+
+/* Solid accent backgrounds */
+[data-theme="soti"] .bg-emerald-500    { background-color: var(--echo) !important; }
+[data-theme="soti"] .bg-red-400,
+[data-theme="soti"] .bg-red-500        { background-color: var(--warm) !important; }
+[data-theme="soti"] .bg-blue-500,
+[data-theme="soti"] .bg-blue-600       { background-color: var(--signal) !important; }
+[data-theme="soti"] .bg-violet-500,
+[data-theme="soti"] .bg-violet-600     { background-color: #A78BFA !important; }
+[data-theme="soti"] .bg-slate-600,
+[data-theme="soti"] .bg-slate-700      { background-color: var(--panel-3) !important; }
+
+/* ---- Text colours ---- */
+[data-theme="soti"] .text-slate-900    { color: var(--text) !important; }
+[data-theme="soti"] .text-slate-800    { color: var(--text) !important; }
+[data-theme="soti"] .text-slate-700    { color: color-mix(in srgb, var(--text) 85%, var(--dim)) !important; }
+[data-theme="soti"] .text-slate-600    { color: var(--dim) !important; }
+[data-theme="soti"] .text-slate-500    { color: var(--dim) !important; }
+[data-theme="soti"] .text-slate-400    { color: var(--dim) !important; }
+[data-theme="soti"] .text-slate-300    { color: var(--dim-2) !important; }
+
+/* Positive/growth → echo (mint) */
+[data-theme="soti"] .text-emerald-400,
+[data-theme="soti"] .text-emerald-500,
+[data-theme="soti"] .text-emerald-600,
+[data-theme="soti"] .text-emerald-700,
+[data-theme="soti"] .text-emerald-800,
+[data-theme="soti"] .text-green-600,
+[data-theme="soti"] .text-green-700    { color: var(--echo) !important; }
+
+/* Negative/decline → warm */
+[data-theme="soti"] .text-red-400,
+[data-theme="soti"] .text-red-500,
+[data-theme="soti"] .text-red-600,
+[data-theme="soti"] .text-red-700,
+[data-theme="soti"] .text-red-800      { color: var(--warm) !important; }
+
+/* Cyan/signal → signal */
+[data-theme="soti"] .text-blue-400,
+[data-theme="soti"] .text-blue-500,
+[data-theme="soti"] .text-blue-600,
+[data-theme="soti"] .text-blue-700     { color: var(--signal) !important; }
+
+/* Teal → signal (slightly muted) */
+[data-theme="soti"] .text-teal-400,
+[data-theme="soti"] .text-teal-500,
+[data-theme="soti"] .text-teal-600,
+[data-theme="soti"] .text-teal-700     { color: var(--signal-2) !important; }
+
+/* Violet/purple stays as-is but lightened for dark bg */
+[data-theme="soti"] .text-violet-400,
+[data-theme="soti"] .text-violet-500,
+[data-theme="soti"] .text-violet-600,
+[data-theme="soti"] .text-violet-700   { color: #C4B5FD !important; }
+
+/* Amber → warm (muted) */
+[data-theme="soti"] .text-amber-400,
+[data-theme="soti"] .text-amber-500,
+[data-theme="soti"] .text-amber-700    { color: var(--warm) !important; }
+
+/* Pink */
+[data-theme="soti"] .text-pink-500,
+[data-theme="soti"] .text-pink-600,
+[data-theme="soti"] .text-pink-700     { color: var(--warm) !important; }
+
+/* Indigo */
+[data-theme="soti"] .text-indigo-700   { color: var(--signal) !important; }
+
+/* White text on dark backgrounds should stay white */
+
+/* ---- Border colours ---- */
+[data-theme="soti"] .border-slate-50,
+[data-theme="soti"] .border-slate-100,
+[data-theme="soti"] .border-slate-200  { border-color: var(--line) !important; }
+[data-theme="soti"] .border-slate-300  { border-color: var(--line-2) !important; }
+[data-theme="soti"] .border-slate-600  { border-color: var(--line-2) !important; }
+
+[data-theme="soti"] .border-blue-100,
+[data-theme="soti"] .border-blue-200,
+[data-theme="soti"] .border-blue-300   { border-color: color-mix(in srgb, var(--signal) 25%, var(--line)) !important; }
+[data-theme="soti"] .border-blue-400,
+[data-theme="soti"] .border-blue-600   { border-color: var(--signal) !important; }
+
+[data-theme="soti"] .border-teal-100,
+[data-theme="soti"] .border-teal-200,
+[data-theme="soti"] .border-teal-300   { border-color: color-mix(in srgb, var(--echo) 25%, var(--line)) !important; }
+[data-theme="soti"] .border-teal-400,
+[data-theme="soti"] .border-teal-500,
+[data-theme="soti"] .border-teal-600   { border-color: var(--echo) !important; }
+
+[data-theme="soti"] .border-emerald-100,
+[data-theme="soti"] .border-emerald-200 { border-color: color-mix(in srgb, var(--echo) 25%, var(--line)) !important; }
+
+[data-theme="soti"] .border-red-100,
+[data-theme="soti"] .border-red-200    { border-color: color-mix(in srgb, var(--warm) 25%, var(--line)) !important; }
+
+[data-theme="soti"] .border-violet-100,
+[data-theme="soti"] .border-violet-200 { border-color: color-mix(in srgb, #A78BFA 25%, var(--line)) !important; }
+[data-theme="soti"] .border-violet-600 { border-color: #A78BFA !important; }
+
+[data-theme="soti"] .border-amber-200  { border-color: color-mix(in srgb, var(--warm) 25%, var(--line)) !important; }
+
+/* ---- Divide colours ---- */
+[data-theme="soti"] .divide-slate-100 > :not(:first-child),
+[data-theme="soti"] .divide-slate-200 > :not(:first-child) { border-color: var(--line) !important; }
+
+/* ---- Ring / focus ---- */
+[data-theme="soti"] .ring-primary\/30   { --tw-ring-color: color-mix(in srgb, var(--signal) 30%, transparent) !important; }
+[data-theme="soti"] *:focus-visible     { outline: 2px solid var(--signal) !important; outline-offset: 2px !important; }
+
+/* ---- Rounded → square (brand motif: no rounded corners) ---- */
+[data-theme="soti"] .rounded-xl,
+[data-theme="soti"] .rounded-2xl,
+[data-theme="soti"] .rounded-lg,
+[data-theme="soti"] .rounded-md        { border-radius: 0 !important; }
+[data-theme="soti"] .rounded-full       { /* keep pills and avatars round */ }
+
+/* ---- Shadows → none (brand motif: no decorative shadows) ---- */
+[data-theme="soti"] .shadow-sm,
+[data-theme="soti"] .shadow-md,
+[data-theme="soti"] .shadow-lg,
+[data-theme="soti"] .shadow-xl         { box-shadow: none !important; }
+
+/* ---- Gradient overrides (sidebar, hero) ---- */
+[data-theme="soti"] .from-sidebar-from { --tw-gradient-from: var(--void) !important; }
+[data-theme="soti"] .to-sidebar-to     { --tw-gradient-to: var(--void) !important; }
+[data-theme="soti"] .from-hero-from    { --tw-gradient-from: var(--void) !important; }
+[data-theme="soti"] .via-hero-mid      { --tw-gradient-via: var(--signal) !important; }
+[data-theme="soti"] .to-hero-to        { --tw-gradient-to: var(--echo) !important; }
+
+/* ---- Scrollbar ---- */
+[data-theme="soti"] .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--line-2); }
+[data-theme="soti"] .scrollbar-thin::-webkit-scrollbar-track { background: var(--void); }
+
+/* ---- Chart styling ---- */
+[data-theme="soti"] .recharts-default-tooltip {
+  background-color: var(--panel) !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+}
+[data-theme="soti"] .recharts-tooltip-label   { color: var(--text) !important; }
+[data-theme="soti"] .recharts-active-dot circle { filter: drop-shadow(0 0 6px var(--signal)) !important; }
+[data-theme="soti"] .recharts-cartesian-grid line { stroke: var(--line) !important; }
+
+/* ---- KPI accent bar → cyan-to-mint ---- */
+[data-theme="soti"] .kpi-accent-bar {
+  background: linear-gradient(90deg, var(--signal), var(--echo)) !important;
+  border-radius: 0 !important;
+}
+
+/* ---- Text gradient → cyan-to-mint ---- */
+[data-theme="soti"] .text-gradient {
+  background: linear-gradient(135deg, var(--signal), var(--echo)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* ---- Glow animations → cyan ---- */
+[data-theme="soti"] .animate-pulse-glow {
+  animation: soti-pulse-glow 2s ease-in-out infinite !important;
+}
+@keyframes soti-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--signal) 40%, transparent); }
+  50%      { box-shadow: 0 0 0 8px transparent; }
+}
+
+/* ---- Narrative glow → cyan ---- */
+[data-theme="soti"] .animate-narrative-glow {
+  animation: soti-narrative-glow 4s ease-in-out infinite !important;
+}
+@keyframes soti-narrative-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 30px -5px color-mix(in srgb, var(--signal) 8%, transparent); }
+}
+
+/* ---- Card interactions → no lift, border highlight only ---- */
+[data-theme="soti"] .chart-card:hover {
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: var(--line-2) !important;
+}
+[data-theme="soti"] .kpi-hover:hover {
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: var(--signal) !important;
+}
+[data-theme="soti"] .card-interactive:hover {
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: var(--signal) !important;
+}
+
+/* ---- Hero stat cards (login page) ---- */
+[data-theme="soti"] .hero-stat-card {
+  background: var(--panel) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+}
+[data-theme="soti"] .hero-stat-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: var(--signal) !important;
+}
+[data-theme="soti"] .glass {
+  background: var(--panel) !important;
+  backdrop-filter: none !important;
+  border-color: var(--line) !important;
+  border-radius: 0 !important;
+}
+
+/* ---- Inputs ---- */
+[data-theme="soti"] input,
+[data-theme="soti"] select,
+[data-theme="soti"] textarea {
+  background-color: var(--panel-2) !important;
+  border-color: var(--line) !important;
+  color: var(--text) !important;
+}
+[data-theme="soti"] input::placeholder,
+[data-theme="soti"] textarea::placeholder {
+  color: var(--dim) !important;
+}
+[data-theme="soti"] input:focus,
+[data-theme="soti"] select:focus,
+[data-theme="soti"] textarea:focus {
+  border-color: var(--signal) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 30%, transparent) !important;
+}
+
+/* ---- Login form panel ---- */
+[data-theme="soti"] .login-form-panel {
+  background-color: var(--panel) !important;
+}
+[data-theme="soti"] .login-form-panel .text-slate-900 {
+  color: var(--text) !important;
+}
+
+/* ---- Buttons (primary) ---- */
+[data-theme="soti"] .bg-primary {
+  background-color: var(--signal) !important;
+  color: var(--on-signal) !important;
+}
+
+/* ---- Primary token soft backgrounds ---- */
+[data-theme="soti"] .bg-primary\/10 {
+  background-color: color-mix(in srgb, var(--signal) 10%, transparent) !important;
+}
+[data-theme="soti"] .bg-primary\/20 {
+  background-color: color-mix(in srgb, var(--signal) 20%, transparent) !important;
+}
+
+/* ---- Metric toggle / segmented control → SOTI seg pattern ---- */
+[data-theme="soti"] .bg-slate-50.border-slate-200 {
+  background-color: var(--panel) !important;
+  border-color: var(--line) !important;
+}
+
+/* ---- Gradient dark panels → void ---- */
+[data-theme="soti"] .from-slate-900,
+[data-theme="soti"] .from-slate-800 {
+  --tw-gradient-from: var(--panel) !important;
+}
+[data-theme="soti"] .to-slate-800,
+[data-theme="soti"] .to-slate-700 {
+  --tw-gradient-to: var(--panel-2) !important;
+}
+
+/* ---- Gradient tint overlays → subtle token tints ---- */
+[data-theme="soti"] .from-blue-50\/60,
+[data-theme="soti"] .from-blue-50\/30,
+[data-theme="soti"] .from-violet-50\/60,
+[data-theme="soti"] .from-teal-50\/60,
+[data-theme="soti"] .from-teal-50\/30 {
+  --tw-gradient-from: color-mix(in srgb, var(--signal) 5%, var(--panel-2)) !important;
+}
+[data-theme="soti"] .to-indigo-50\/40,
+[data-theme="soti"] .to-indigo-50\/20,
+[data-theme="soti"] .to-emerald-50\/40,
+[data-theme="soti"] .to-emerald-50\/20 {
+  --tw-gradient-to: transparent !important;
+}
+
+/* ---- Print mode ---- */
+@media print {
+  [data-theme="soti"] {
+    background: #fff !important;
+    color: #000 !important;
+    background-image: none !important;
+  }
+  [data-theme="soti"] .bg-white,
+  [data-theme="soti"] .bg-slate-50 {
+    background-color: #fff !important;
+  }
+  [data-theme="soti"] .text-slate-900,
+  [data-theme="soti"] .text-slate-800,
+  [data-theme="soti"] .text-slate-700 {
+    color: #000 !important;
+  }
+  [data-theme="soti"] .ping { animation: none !important; }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="soti"] * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

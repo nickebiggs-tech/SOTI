@@ -10,8 +10,9 @@ import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
 import type { ManufacturerSummary } from '../../data/types'
 import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
+import { getChartColors, getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
-const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+const COLORS = getChartColors()
 
 /** IQVIA-grade Dispense market narrative — commercial, actionable, $ denominated */
 function generateDispenseNarrative(
@@ -615,10 +616,10 @@ export function DispensePage() {
               <h4 className="text-xs font-semibold text-slate-600 mb-3">{isValue ? 'Monthly Sales Trend' : 'Monthly Units Trend'}</h4>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                  <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                  <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke={getAxisColor()} />
+                  <YAxis tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => formatCompact(v)} />
+                  <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
                   <Line type="monotone" dataKey={isValue ? 'sales' : 'units'} stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={1200} animationEasing="ease-out" />
                 </LineChart>
               </ResponsiveContainer>
@@ -629,10 +630,10 @@ export function DispensePage() {
               <h4 className="text-xs font-semibold text-slate-600 mb-3">Top Manufacturers</h4>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={mfrBreakdown.slice(0, 8)} layout="vertical" margin={{ left: 10 }} onClick={(e) => { if (e?.activeLabel) { const label = String(e.activeLabel); setSelectedMfr(selectedMfr === label ? null : label) } }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                  <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={130} />
-                  <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                  <XAxis type="number" tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => formatCompact(v)} />
+                  <YAxis dataKey="manufacturer" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke={getGridColor()} width={130} />
+                  <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
                   <Bar dataKey={isValue ? 'tyValue' : 'tyUnits'} name={isValue ? 'TY Value' : 'TY Units'} radius={[0, 4, 4, 0]} animationDuration={800} animationEasing="ease-out" className="cursor-pointer">
                     {mfrBreakdown.slice(0, 8).map((m, i) => <Cell key={i} fill={selectedMfr === m.manufacturer ? COLORS[i % COLORS.length] : selectedMfr ? `${COLORS[i % COLORS.length]}44` : COLORS[i % COLORS.length]} />)}
                   </Bar>
@@ -766,10 +767,10 @@ export function DispensePage() {
                   </div>
                   <ResponsiveContainer width="100%" height={180}>
                     <LineChart data={skuMonthlyTrend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                      <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompact(v)} />
-                      <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke={getAxisColor()} />
+                      <YAxis tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => formatCompact(v)} />
+                      <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
                       <Line type="monotone" dataKey={isValue ? 'sales' : 'units'} stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
                     </LineChart>
                   </ResponsiveContainer>

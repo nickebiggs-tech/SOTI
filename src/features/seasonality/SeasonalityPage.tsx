@@ -12,6 +12,7 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
+import { getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 type SeasonalGroup = 'cold-flu' | 'allergy' | 'skin-sun' | 'pain-sport'
@@ -643,10 +644,10 @@ export function SeasonalityPage() {
                 return null
               })
             })}
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="monthLabel" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={2} />
-            <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-            <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+            <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+            <XAxis dataKey="monthLabel" tick={{ fontSize: 10 }} stroke={getAxisColor()} interval={2} />
+            <YAxis tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+            <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
             <Line type="monotone" dataKey="cold-flu" name="Cold & Flu" stroke="#2563EB" strokeWidth={2} dot={{ r: 1.5 }} />
             <Line type="monotone" dataKey="allergy" name="Allergy" stroke="#059669" strokeWidth={2} dot={{ r: 1.5 }} />
             <Line type="monotone" dataKey="skin-sun" name="Skin & Sun" stroke="#D97706" strokeWidth={2} dot={{ r: 1.5 }} />
@@ -748,10 +749,10 @@ export function SeasonalityPage() {
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={categoryMonthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#94a3b8" interval={2} />
-                <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-                <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+                <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke={getAxisColor()} interval={2} />
+                <YAxis tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+                <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
                 <Line type="monotone" dataKey="sales" name={isValue ? 'Value' : 'Units'} stroke="#2563EB" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 5, strokeWidth: 2 }} animationDuration={800} />
               </LineChart>
             </ResponsiveContainer>

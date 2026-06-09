@@ -17,12 +17,18 @@ function applyLivery(livery: Livery) {
     root.style.setProperty(`--${key}`, value)
   })
   root.style.setProperty('--font-sans', livery.fontFamily)
+
+  if (livery.id === 'soti-terminal') {
+    root.dataset.theme = 'soti'
+  } else {
+    delete root.dataset.theme
+  }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [livery, setLiveryState] = useState<Livery>(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return (saved && LIVERIES[saved]) || LIVERIES['soti']!
+    return (saved && LIVERIES[saved]) || LIVERIES['soti-terminal']!
   })
 
   const setLivery = useCallback((id: string) => {

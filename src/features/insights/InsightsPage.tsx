@@ -13,8 +13,9 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
+import { getChartColors, getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
-const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+const COLORS = getChartColors()
 
 interface ThemeCard {
   id: string
@@ -221,10 +222,10 @@ export function InsightsPage() {
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Rx vs OTC — Year-on-Year</h3>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={marketComparison} barCategoryGap="30%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#94a3b8" />
-              <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+              <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke={getAxisColor()} />
+              <YAxis tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
               <Bar dataKey="ly" name="Last Year" fill="#94a3b8" radius={[4, 4, 0, 0]} animationDuration={1200} animationEasing="ease-out" />
               <Bar dataKey="ty" name="This Year" fill="#2563EB" radius={[4, 4, 0, 0]} animationDuration={1200} animationEasing="ease-out" animationBegin={300} />
             </BarChart>
