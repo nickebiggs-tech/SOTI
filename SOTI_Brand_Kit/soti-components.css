@@ -1,0 +1,102 @@
+/* =========================================================================
+   SOTI COMPONENTS — reusable building blocks, lifted verbatim from the brand
+   pack and scoped under [data-theme="soti"]. Rename to your conventions as needed.
+   Requires soti-theme.css (tokens) + soti-fonts.css.
+   ========================================================================= */
+
+/* ---- Wordmark + live "ping" + module suffix (·Rx / ·OTC) ---------------- */
+[data-theme="soti"] .smark{font-family:var(--display);font-weight:800;letter-spacing:.01em;line-height:.9;display:inline-flex;align-items:flex-start;}
+[data-theme="soti"] .smark .ping,[data-theme="soti"] .ping{width:.16em;height:.16em;min-width:9px;min-height:9px;border-radius:50%;background:var(--echo);margin-left:.14em;margin-top:.18em;box-shadow:0 0 0 0 color-mix(in srgb,var(--echo) 70%,transparent);}
+[data-theme="soti"] .smark .mod{color:var(--signal);font-style:italic;font-weight:700;}
+@media(prefers-reduced-motion:no-preference){
+  [data-theme="soti"] .ping{animation:soti-ping 2.6s ease-out infinite;}
+  @keyframes soti-ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--echo) 60%,transparent);}70%{box-shadow:0 0 0 .9em transparent;}100%{box-shadow:0 0 0 0 transparent;}}
+}
+
+/* ---- Terminal status bar (sticky top) ---------------------------------- */
+[data-theme="soti"] .statusbar{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:11px 30px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--void) 88%,transparent);backdrop-filter:blur(10px);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);}
+[data-theme="soti"] .statusbar .l{color:var(--signal);}
+[data-theme="soti"] .statusbar .l b{color:var(--text);font-weight:600;}
+[data-theme="soti"] .statusbar .r{display:flex;gap:18px;}
+[data-theme="soti"] .statusbar .r .ok{color:var(--echo);}
+
+/* ---- Section + numbered header ----------------------------------------- */
+[data-theme="soti"] .sec{padding:64px 0 0;}
+[data-theme="soti"] .sec-head{display:flex;align-items:baseline;gap:16px;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:30px;}
+[data-theme="soti"] .sec-head .pageno{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--on-signal);background:var(--signal);padding:3px 8px;align-self:center;}
+[data-theme="soti"] .sec-head .num{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--signal);}
+[data-theme="soti"] .sec-head h2{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(24px,3vw,32px);letter-spacing:-.025em;}
+[data-theme="soti"] .sec-head h2 em{font-style:italic;color:var(--signal);}
+[data-theme="soti"] .sec-head .ann{margin-left:auto;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+
+/* ---- Prose / lede ------------------------------------------------------ */
+[data-theme="soti"] .lede{font-family:var(--display);font-weight:600;font-size:clamp(18px,2.2vw,26px);line-height:1.38;letter-spacing:-.015em;max-width:38ch;}
+[data-theme="soti"] .lede em{font-style:italic;color:var(--signal);}
+[data-theme="soti"] .prose{font-family:var(--mono);font-size:13px;line-height:1.75;color:var(--dim);max-width:64ch;}
+[data-theme="soti"] .prose b{color:var(--text);font-weight:500;}
+[data-theme="soti"] .prose .sig{color:var(--signal);}
+
+/* ---- Card (bordered, header strip) ------------------------------------ */
+[data-theme="soti"] .card{border:1px solid var(--line);background:var(--panel);}
+[data-theme="soti"] .card .ch{padding:9px 15px;border-bottom:1px solid var(--line);background:var(--panel-2);display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+[data-theme="soti"] .card .ch .c{color:var(--signal);}
+[data-theme="soti"] .card .cb{padding:20px;}
+
+/* ---- KPI / metric cards ----------------------------------------------- */
+[data-theme="soti"] .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+@media(max-width:760px){[data-theme="soti"] .kpis{grid-template-columns:repeat(2,1fr);}}
+[data-theme="soti"] .kpi{border:1px solid var(--line);background:var(--panel);padding:18px;}
+[data-theme="soti"] .kpi .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+[data-theme="soti"] .kpi .val{font-family:var(--display);font-weight:800;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.02em;margin-top:10px;line-height:1;}
+[data-theme="soti"] .kpi .val .u{font-size:.5em;color:var(--dim);font-weight:600;letter-spacing:0;}
+[data-theme="soti"] .kpi .delta{font-family:var(--mono);font-size:11px;margin-top:9px;color:var(--echo);}
+[data-theme="soti"] .kpi .delta.down{color:var(--warm);}
+[data-theme="soti"] .kpi .delta .sub{color:var(--dim);}
+
+/* ---- Horizontal bar rows ---------------------------------------------- */
+[data-theme="soti"] .bars{display:flex;flex-direction:column;gap:11px;}
+[data-theme="soti"] .bar{display:grid;grid-template-columns:160px 1fr 96px;gap:14px;align-items:center;}
+[data-theme="soti"] .bar .nm{font-family:var(--mono);font-size:11.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+[data-theme="soti"] .bar .track{height:16px;background:var(--void);border:1px solid var(--line);position:relative;overflow:hidden;}
+[data-theme="soti"] .bar .fill{position:absolute;top:0;left:0;bottom:0;background:linear-gradient(90deg,color-mix(in srgb,var(--signal) 30%,transparent),var(--signal));}
+[data-theme="soti"] .bar .d{font-family:var(--mono);font-size:11px;text-align:right;color:var(--echo);}
+[data-theme="soti"] .bar .d.down{color:var(--warm);}
+[data-theme="soti"] .bar .d .sub{color:var(--dim);}
+
+/* ---- Segmented toggle (e.g. Rx <-> OTC) ------------------------------- */
+[data-theme="soti"] .seg{display:inline-flex;border:1px solid var(--line-2);}
+[data-theme="soti"] .seg span{font-family:var(--mono);font-size:11px;padding:8px 14px;color:var(--dim);border-left:1px solid var(--line-2);letter-spacing:.04em;cursor:pointer;}
+[data-theme="soti"] .seg span:first-child{border-left:0;}
+[data-theme="soti"] .seg span.on{background:var(--signal);color:var(--on-signal);font-weight:600;}
+
+/* ---- Drill breadcrumb ------------------------------------------------- */
+[data-theme="soti"] .crumb{font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+[data-theme="soti"] .crumb .c{color:var(--signal);}
+[data-theme="soti"] .crumb .here{color:var(--text);border-bottom:1px solid var(--signal);}
+[data-theme="soti"] .crumb .sep{color:var(--dim-2);}
+
+/* ---- Ranked list panel ("in the basket") ------------------------------ */
+[data-theme="soti"] .basket{border:1px solid var(--line);background:var(--void);padding:16px;}
+[data-theme="soti"] .basket .bh{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:13px;}
+[data-theme="soti"] .basket .row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11.5px;padding:8px 0;border-bottom:1px solid var(--line);color:var(--text);}
+[data-theme="soti"] .basket .row:last-child{border-bottom:0;}
+[data-theme="soti"] .basket .row .g{color:var(--echo);}
+[data-theme="soti"] .basket .row .g.down{color:var(--warm);}
+
+/* ---- "Screen" — fake-browser dashboard panel -------------------------- */
+[data-theme="soti"] .screen{border:1px solid var(--line-2);background:var(--panel);overflow:hidden;box-shadow:0 30px 80px -40px rgba(0,0,0,.9);}
+[data-theme="soti"] .screen .titlebar{display:flex;align-items:center;gap:9px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel-2);}
+[data-theme="soti"] .screen .titlebar .dots{display:flex;gap:6px;}
+[data-theme="soti"] .screen .titlebar .dots span{width:9px;height:9px;border-radius:50%;background:var(--line-2);}
+[data-theme="soti"] .screen .titlebar .url{margin-left:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--dim);}
+[data-theme="soti"] .screen .titlebar .url b{color:var(--text);font-weight:500;}
+
+/* ---- CTA panel -------------------------------------------------------- */
+[data-theme="soti"] .cta{border:1px solid var(--signal);background:linear-gradient(180deg,color-mix(in srgb,var(--signal) 8%,transparent),transparent);padding:40px;}
+[data-theme="soti"] .cta h3{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(22px,3vw,32px);letter-spacing:-.02em;line-height:1.1;}
+[data-theme="soti"] .cta h3 em{font-style:italic;color:var(--signal);}
+[data-theme="soti"] .cta p{margin:14px 0 0;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--dim);}
+
+/* ---- Footer ----------------------------------------------------------- */
+[data-theme="soti"] footer{margin-top:70px;padding-top:20px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim-2);}
+[data-theme="soti"] footer b{color:var(--dim);font-weight:400;}

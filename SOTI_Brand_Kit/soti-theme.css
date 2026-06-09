@@ -1,0 +1,64 @@
+/* =========================================================================
+   SOTI THEME — design tokens + base surface
+   Scoped under [data-theme="soti"] so it is NON-DESTRUCTIVE: existing styling
+   stays intact until you opt a subtree (or <html>) into the theme.
+   Activate:  document.documentElement.dataset.theme = 'soti'
+   ========================================================================= */
+
+[data-theme="soti"] {
+  /* Surfaces (darkest -> lightest) */
+  --void:#020407; --panel:#06090C; --panel-2:#0C1116; --panel-3:#141A21;
+  /* Lines / borders */
+  --line:#1F2934; --line-2:#2A3845;
+  /* Text */
+  --text:#E8F4FF; --dim:#5A6573; --dim-2:#3D4754;
+  /* Signal colours */
+  --signal:#5EDDFF;   /* cyan  — primary accent, value, links, active */
+  --signal-2:#9CECFF; /* lighter cyan */
+  --echo:#6BFFB8;     /* mint  — growth, live, positive delta */
+  --warm:#FF6B47;     /* warm  — decline / negative delta ONLY */
+  --on-signal:#06090C;/* ink on a cyan fill */
+  /* Type */
+  --display:'Switzer',ui-sans-serif,system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+}
+
+/* Base surface — apply to the themed root or app wrapper.
+   The dot-grid + top-right cyan glow are the signature SOTI surface. */
+[data-theme="soti"] {
+  background:var(--void);
+  color:var(--text);
+  font-family:var(--display);
+  font-weight:500;
+  font-size:14.5px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(ellipse at 82% -8%, rgba(94,221,255,.08), transparent 50%),
+    radial-gradient(var(--line) 1px, transparent 1px);
+  background-size:auto, 22px 22px;
+  background-position:0 0,-1px -1px;
+  background-attachment:fixed;
+}
+
+/* Helpful base resets within the theme */
+[data-theme="soti"] *{box-sizing:border-box;}
+[data-theme="soti"] a{color:var(--signal);text-decoration:none;}
+[data-theme="soti"] a:focus-visible,
+[data-theme="soti"] button:focus-visible,
+[data-theme="soti"] [tabindex]:focus-visible{outline:2px solid var(--signal);outline-offset:2px;}
+
+/* Numbers, deltas, and "terminal" strings are monospace + tabular */
+[data-theme="soti"] .mono,
+[data-theme="soti"] .num,
+[data-theme="soti"] .data{font-family:var(--mono);font-variant-numeric:tabular-nums;}
+
+/* Semantic delta helpers */
+[data-theme="soti"] .pos,[data-theme="soti"] .up{color:var(--echo);}
+[data-theme="soti"] .neg,[data-theme="soti"] .down{color:var(--warm);}
+
+/* Print: invert to light, drop the grid + motion (matches the brand pack) */
+@media print {
+  [data-theme="soti"]{background:#fff !important;color:#000;background-image:none;}
+  [data-theme="soti"] .ping{animation:none;}
+}
