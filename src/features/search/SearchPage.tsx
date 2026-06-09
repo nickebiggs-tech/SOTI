@@ -12,8 +12,9 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompactDollar, formatCompact, formatDelta } from '../../lib/formatters'
 import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
+import { getChartColors20, getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
-const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D', '#0369A1', '#BE185D', '#B45309', '#059669', '#6D28D9', '#E11D48', '#0E7490', '#C2410C', '#7C2D12', '#4338CA']
+const COLORS = getChartColors20()
 const MAX_SELECTIONS = 20
 
 type MarketType = 'rx' | 'otc'
@@ -768,13 +769,13 @@ export function SearchPage() {
           <div className="p-3 sm:p-5">
             <ResponsiveContainer width="100%" height={320}>
               <LineChart data={trendData} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => formatCompactDollar(v)} />
+                <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke={getAxisColor()} />
+                <YAxis tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => formatCompactDollar(v)} />
                 <Tooltip
                   formatter={(v) => formatCompactDollar(v as number)}
                   labelStyle={{ fontSize: 11, fontWeight: 600 }}
-                  contentStyle={{ fontSize: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                  contentStyle={getTooltipStyle()}
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 9, paddingTop: 8 }}
@@ -822,10 +823,10 @@ export function SearchPage() {
           <div className="p-3 sm:p-5">
             <ResponsiveContainer width="100%" height={Math.max(200, selected.length * 50 + 40)}>
               <BarChart data={comparisonChart} layout="vertical" margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={160} />
-                <Tooltip formatter={(v) => fmt(v as number)} />
+                <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                <XAxis type="number" tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke={getAxisColor()} width={160} />
+                <Tooltip formatter={(v) => fmt(v as number)} contentStyle={getTooltipStyle()} />
                 <Bar dataKey="tyValue" name="This Year" fill="#2563EB" radius={[0, 4, 4, 0]} animationDuration={800} />
                 <Bar dataKey="lyValue" name="Last Year" fill="#94a3b8" radius={[0, 4, 4, 0]} animationDuration={800} />
               </BarChart>
@@ -847,10 +848,10 @@ export function SearchPage() {
           <div className="p-3 sm:p-5">
             <ResponsiveContainer width="100%" height={Math.max(200, selected.length * 50 + 40)}>
               <BarChart data={growthChart} layout="vertical" margin={{ left: 10, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis type="number" tick={{ fontSize: 9 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={160} />
-                <Tooltip formatter={(v) => fmt(v as number)} />
+                <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+                <XAxis type="number" tick={{ fontSize: 9 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke={getAxisColor()} width={160} />
+                <Tooltip formatter={(v) => fmt(v as number)} contentStyle={getTooltipStyle()} />
                 <Bar dataKey="absChange" name={isValue ? '$ Change' : 'Unit Change'} radius={[0, 4, 4, 0]} animationDuration={800}>
                   {growthChart.map((c, i) => <Cell key={i} fill={c.absChange >= 0 ? '#059669' : '#DC2626'} />)}
                 </Bar>
@@ -919,7 +920,7 @@ export function SearchPage() {
           <div className="p-3 sm:p-5 flex justify-center">
             <ResponsiveContainer width="100%" height={350}>
               <RadarChart data={radarData}>
-                <PolarGrid stroke="#e2e8f0" />
+                <PolarGrid stroke={getGridColor()} />
                 <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10 }} stroke="#64748b" />
                 <PolarRadiusAxis tick={{ fontSize: 8 }} stroke="#cbd5e1" domain={[0, 100]} />
                 {selected.map((s, i) => (
@@ -933,7 +934,7 @@ export function SearchPage() {
                     strokeWidth={2}
                   />
                 ))}
-                <Tooltip />
+                <Tooltip contentStyle={getTooltipStyle()} />
               </RadarChart>
             </ResponsiveContainer>
           </div>

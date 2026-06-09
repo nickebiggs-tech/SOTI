@@ -12,6 +12,7 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { formatCompact, formatCompactDollar } from '../../lib/formatters'
 import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
+import { getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
 interface SkuItem {
   sku: string
@@ -242,10 +243,10 @@ export function OTCWatchPage() {
         <div className="p-3 sm:p-5">
           <ResponsiveContainer width="100%" height={380}>
             <BarChart data={waterfallData} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={160} />
-              <Tooltip formatter={(v) => fmt(v as number)} />
+              <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke={getGridColor()} width={160} />
+              <Tooltip formatter={(v) => fmt(v as number)} contentStyle={getTooltipStyle()} />
               <Bar dataKey="gain" name={isValue ? 'Value Gained' : 'Units Gained'} fill="#059669" radius={[0, 4, 4, 0]} animationDuration={800} />
               <Bar dataKey="loss" name={isValue ? 'Value Lost' : 'Units Lost'} fill="#DC2626" radius={[0, 4, 4, 0]} animationDuration={800} />
             </BarChart>
@@ -265,15 +266,16 @@ export function OTCWatchPage() {
         <div className="p-3 sm:p-5">
           <ResponsiveContainer width="100%" height={420}>
             <BarChart data={catChartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke="#e2e8f0" width={170} />
+              <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#475569' }} stroke={getGridColor()} width={170} />
               <Tooltip
                 formatter={(v) => fmt(v as number)}
                 labelFormatter={(label) => {
                   const item = catChartData.find(c => c.name === label)
                   return item ? `${item.fullName} (TY: ${fmt(item.tyValue)})` : String(label)
                 }}
+                contentStyle={getTooltipStyle()}
               />
               <Bar dataKey="value" name={isValue ? '$ Change' : 'Unit Change'} radius={[0, 4, 4, 0]} animationDuration={800}>
                 {catChartData.map((c, i) => <Cell key={i} fill={c.value >= 0 ? '#059669' : '#DC2626'} />)}

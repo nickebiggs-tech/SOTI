@@ -13,8 +13,9 @@ import { useData } from '../../data/DataProvider'
 import { KPICard } from '../../components/ui/KPICard'
 import { MetricToggle, type MetricMode } from '../../components/ui/MetricToggle'
 import { formatCompact, formatCompactDollar, formatCurrency } from '../../lib/formatters'
+import { getChartColors, getGridColor, getAxisColor, getTooltipStyle } from '../../lib/chart-colors'
 
-const COLORS = ['#2563EB', '#7C3AED', '#D97706', '#0D9488', '#DC2626', '#DB2777', '#EA580C', '#0891B2', '#4F46E5', '#65A30D']
+const COLORS = getChartColors()
 
 /** IQVIA-grade narrative — opportunity sizing, competitive intelligence, actionable */
 function generateMarketNarrative(
@@ -387,10 +388,10 @@ export function DashboardPage() {
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={marketSplit} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={4} dataKey="value" cornerRadius={4} animationDuration={1200} animationBegin={200} animationEasing="ease-out">
-                <Cell fill="#2563EB" />
-                <Cell fill="#0D9488" />
+                <Cell fill={COLORS[0]} />
+                <Cell fill={COLORS[1]} />
               </Pie>
-              <Tooltip formatter={(value) => isValue ? formatCurrency(Number(value ?? 0)) : formatCompact(Number(value ?? 0))} />
+              <Tooltip formatter={(value) => isValue ? formatCurrency(Number(value ?? 0)) : formatCompact(Number(value ?? 0))} contentStyle={getTooltipStyle()} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -447,10 +448,10 @@ export function DashboardPage() {
           <h3 className="text-sm font-semibold text-slate-700 mb-4">{isValue ? 'Dispense — Category Value ($)' : 'Dispense — Category Volume (Units)'}</h3>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={ethTop10} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
-              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+              <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke={getAxisColor()} width={130} />
+              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
               <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={1000} animationEasing="ease-out">
                 {ethTop10.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
@@ -462,10 +463,10 @@ export function DashboardPage() {
           <h3 className="text-sm font-semibold text-slate-700 mb-4">{isValue ? 'OTC — Category Value ($)' : 'OTC — Category Volume (Units)'}</h3>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={otcTop10} layout="vertical" margin={{ left: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" tickFormatter={(v: number) => fmt(v)} />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke="#94a3b8" width={130} />
-              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} />
+              <CartesianGrid strokeDasharray="3 3" stroke={getGridColor()} />
+              <XAxis type="number" tick={{ fontSize: 10 }} stroke={getAxisColor()} tickFormatter={(v: number) => fmt(v)} />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 9 }} stroke={getAxisColor()} width={130} />
+              <Tooltip formatter={(v) => isValue ? formatCurrency(Number(v ?? 0)) : formatCompact(Number(v ?? 0))} contentStyle={getTooltipStyle()} />
               <Bar dataKey="value" name="TY Value" radius={[0, 4, 4, 0]} animationDuration={1000} animationEasing="ease-out">
                 {otcTop10.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>

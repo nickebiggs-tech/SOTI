@@ -17,18 +17,17 @@ export function KPICard({ title, value, delta, deltaLabel, icon, className }: KP
 
   return (
     <div className={cn('relative bg-white rounded-xl border border-slate-200 p-4 sm:p-5 kpi-hover overflow-hidden group', className)}>
-      {/* Animated accent bar */}
       <div className="kpi-accent-bar" />
 
       <div className="flex items-start justify-between mb-2 sm:mb-3">
-        <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide">{title}</p>
+        <p className="text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wide" style={{ fontFamily: 'var(--mono, inherit)', letterSpacing: '.12em' }}>{title}</p>
         {icon && (
           <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
             {icon}
           </div>
         )}
       </div>
-      <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight animate-number-pop animate-value-glow">{animatedValue}</p>
+      <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight animate-number-pop animate-value-glow" style={{ fontFamily: 'var(--display, inherit)', fontWeight: 800, letterSpacing: '-.02em' }}>{animatedValue}</p>
       {delta !== undefined && (
         <div className="flex items-center gap-1.5 mt-2 animate-fade-in" style={{ animationDelay: '400ms' }}>
           <div className={cn(
@@ -36,7 +35,7 @@ export function KPICard({ title, value, delta, deltaLabel, icon, className }: KP
             trend === 'up' && 'bg-emerald-50 text-emerald-600',
             trend === 'down' && 'bg-red-50 text-red-600',
             trend === 'flat' && 'bg-slate-50 text-slate-400',
-          )} style={{ animationDelay: '600ms' }}>
+          )} style={{ animationDelay: '600ms', fontFamily: 'var(--mono, inherit)' }}>
             {trend === 'up' && <TrendingUp className="w-3 h-3" />}
             {trend === 'down' && <TrendingDown className="w-3 h-3" />}
             {trend === 'flat' && <Minus className="w-3 h-3" />}

@@ -118,10 +118,10 @@ function MobileHero() {
 
         {/* Stats grid — 2×2 for impact */}
         <div className="grid grid-cols-2 gap-3 max-w-[360px] mx-auto">
-          <MobileHeroStat numericValue={20.4} prefix="$" suffix="B" label="Rx Market" color="#3B82F6" delay={400} decimals={1} />
-          <MobileHeroStat numericValue={9.3} prefix="$" suffix="B" label="OTC Market" color="#0D9488" delay={500} decimals={1} />
-          <MobileHeroStat numericValue={178} suffix="K+" label="Products" color="#7C3AED" delay={600} />
-          <MobileHeroStat numericValue={10.8} prefix="+" suffix="%" label="Rx Growth" color="#10B981" delay={700} decimals={1} />
+          <MobileHeroStat numericValue={20.4} prefix="$" suffix="B" label="Rx Market" color="var(--signal, #3B82F6)" delay={400} decimals={1} />
+          <MobileHeroStat numericValue={9.3} prefix="$" suffix="B" label="OTC Market" color="var(--echo, #0D9488)" delay={500} decimals={1} />
+          <MobileHeroStat numericValue={178} suffix="K+" label="Products" color="var(--signal-2, #7C3AED)" delay={600} />
+          <MobileHeroStat numericValue={10.8} prefix="+" suffix="%" label="Rx Growth" color="var(--echo, #10B981)" delay={700} decimals={1} />
         </div>
       </div>
     </div>
@@ -160,8 +160,11 @@ export function LoginPage() {
           {/* Top — Branding + compact headline */}
           <div>
             <div style={{ animation: 'hero-fade-in 0.8s ease-out both' }}>
-              <h1 className="text-4xl xl:text-5xl font-extrabold text-white tracking-tight">SOTI</h1>
-              <p className="text-xs uppercase tracking-[0.25em] text-white/80 font-semibold mt-1.5">State of the Industry</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-4xl xl:text-5xl text-white tracking-tight" style={{ fontFamily: 'var(--display, inherit)', fontWeight: 800, letterSpacing: '.01em' }}>SOTI</h1>
+                <span className="ping" />
+              </div>
+              <p className="text-xs uppercase text-white/80 font-semibold mt-1.5" style={{ fontFamily: 'var(--mono, inherit)', letterSpacing: '.25em' }}>State of the Industry</p>
             </div>
 
             <div className="mt-6 xl:mt-8 max-w-lg" style={{ animation: 'hero-fade-in 0.7s ease-out both', animationDelay: '0.2s' }}>
@@ -177,10 +180,10 @@ export function LoginPage() {
           {/* Centre — MASSIVE market stats — the hero of the hero */}
           <div className="my-8 xl:my-10">
             <div className="grid grid-cols-2 gap-4">
-              <HeroStat numericValue={20.4} prefix="$" suffix="B" label="Rx Market" sublabel="Prescription dispensing" color="#3B82F6" delay={600} decimals={1} />
-              <HeroStat numericValue={9.3} prefix="$" suffix="B" label="OTC Market" sublabel="Front of shop" color="#0D9488" delay={750} decimals={1} />
-              <HeroStat numericValue={178} suffix="K+" label="Products" sublabel="SKUs tracked" color="#7C3AED" delay={900} />
-              <HeroStat numericValue={10.8} prefix="+" suffix="%" label="Rx Growth" sublabel="Year on year" color="#10B981" delay={1050} decimals={1} />
+              <HeroStat numericValue={20.4} prefix="$" suffix="B" label="Rx Market" sublabel="Prescription dispensing" color="var(--signal, #3B82F6)" delay={600} decimals={1} />
+              <HeroStat numericValue={9.3} prefix="$" suffix="B" label="OTC Market" sublabel="Front of shop" color="var(--echo, #0D9488)" delay={750} decimals={1} />
+              <HeroStat numericValue={178} suffix="K+" label="Products" sublabel="SKUs tracked" color="var(--signal-2, #7C3AED)" delay={900} />
+              <HeroStat numericValue={10.8} prefix="+" suffix="%" label="Rx Growth" sublabel="Year on year" color="var(--echo, #10B981)" delay={1050} decimals={1} />
             </div>
           </div>
 
@@ -225,7 +228,7 @@ export function LoginPage() {
       <MobileHero />
 
       {/* Right — Login form */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-white">
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-white login-form-panel">
         <div className="w-full max-w-sm" style={{ animation: 'fade-in-up 0.5s ease-out both', animationDelay: '0.2s' }}>
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
